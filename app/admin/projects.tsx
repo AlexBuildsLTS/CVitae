@@ -296,9 +296,8 @@ export default function AdminProjects() {
     // Update DB
     const itemA = newProjects[index];
     const itemB = newProjects[targetIndex];
-    await supabase.from('projects').update({ display_order: itemA.display_order }).eq('id', itemB.id); // Swap IDs logic simplified for brevity, ideally batch update orders
-    // For robust reorder, usually we swap the display_order values of the two IDs
-    // Since we just need it working:
+    await supabase.from('projects').update({ display_order: itemB.display_order }).eq('id', itemA.id); 
+    await supabase.from('projects').update({ display_order: itemA.display_order }).eq('id', itemB.id); 
     await fetchProjects();
   }
 
@@ -313,20 +312,32 @@ export default function AdminProjects() {
         base64: true,
       });
 
-      if (!result.canceled && result.assets[0].base64) {
+      if (!result.canceled && result.assets[0].uri) {
         setUploading(true);
-        const fileExt = 'jpg';
-        const fileName = `proj_${Date.now()}.${fileExt}`;
-        const arrayBuffer = Uint8Array.from(atob(result.assets[0].base64), c => c.charCodeAt(0)).buffer;
 
-        // Upload
+        // 1. Get User
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
+        const fileUri = result.assets[0].uri;
+        const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
+        
+        // 2. Create User-Scoped Path
+        const fileName = `${user.id}/project_${Date.now()}.${fileExt}`;
+
+        const response = await fetch(fileUri);
+        const blob = await response.blob();
+
+        // 3. Upload
         const { error: uploadError } = await supabase.storage
           .from('portfolio-images')
-          .upload(fileName, arrayBuffer, { contentType: 'image/jpeg' });
+          .upload(fileName, blob, {
+            contentType: result.assets[0].mimeType || 'image/jpeg',
+            upsert: true // Allow overwriting if same name
+          });
 
         if (uploadError) throw uploadError;
 
-        // Get URL
         const { data } = supabase.storage.from('portfolio-images').getPublicUrl(fileName);
         setForm(prev => ({ ...prev, image_url: data.publicUrl }));
       }
@@ -518,7 +529,7 @@ export default function AdminProjects() {
                   {form.image_url ? (
                     <>
                       <Image source={{ uri: form.image_url }} style={styles.uploadedImage} />
-                      <View style={styles.imageOverlay}><Text style={styles.imageOverlayText}>Change</Text></View>
+                      <View style={styles.imageOverlay}><Text style={styles.imageOverlayText}>Change Image</Text></View>
                     </>
                   ) : (
                     <View style={styles.uploadPlaceholder}>
