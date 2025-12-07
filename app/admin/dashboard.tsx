@@ -227,6 +227,7 @@ export default function Dashboard() {
       });
 
       if (!result.canceled && result.assets[0].base64) {
+        // We use the base64 helper method for image upload
         uploadFile(result.assets[0].base64, 'image/jpeg', 'profile_image_url', 'portfolio-images');
       }
     } catch (e) {
@@ -364,6 +365,7 @@ export default function Dashboard() {
 
   // 6. Save Text Settings (Bio, Links, Headline)
   async function saveSettings() {
+    // Check if headline exists to prevent empty hero titles
     if (!profile.headline.trim()) {
         Alert.alert("Validation Error", "Headline cannot be empty.");
         return;
@@ -543,7 +545,7 @@ export default function Dashboard() {
                 )}
             </View>
 
-            {/* CERTIFICATION CARD */}
+            {/* CERTIFICATION CARD - NEW FEATURE */}
             <View style={[styles.uploadCardWrapper, isDesktop && { flex: 1 }]}>
                 <TouchableOpacity 
                     onPress={() => pickDocument('cert')} 

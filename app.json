@@ -1,15 +1,27 @@
 {
   "expo": {
-    "name": "cvitae-expo",
+    "name": "cvitae",
     "slug": "cvitae-expo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/favicon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "icon": "./assets/images/icon.png",
+    "scheme": "cvitae",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#050505"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alexbuildslts.cvitaeexpo"
+    },
+    "android": {
+      "package": "com.alexbuildslts.cvitaeexpo",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#050505"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -29,9 +41,6 @@
       "eas": {
         "projectId": "ac841c29-9f37-4c9b-92be-e29532141c6c"
       }
-    },
-    "android": {
-      "package": "com.alexbuildslts.cvitaeexpo"
     }
   }
 }
