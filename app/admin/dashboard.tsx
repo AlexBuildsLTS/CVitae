@@ -1,45 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, 
-  TextInput, Image, ActivityIndicator, Platform, useWindowDimensions, KeyboardAvoidingView 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert, 
+  TextInput, 
+  Image, 
+  ActivityIndicator, 
+  Platform, 
+  useWindowDimensions, 
+  KeyboardAvoidingView,
+  RefreshControl,
+  LayoutAnimation,
+  UIManager
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter, Stack } from 'expo-router';
 import { 
-  LogOut, Camera, Save, FileText, CheckCircle, 
-  Activity, Globe, User, Award, AlertCircle, FileCheck, AlertTriangle
+  LogOut, 
+  Camera, 
+  Save, 
+  FileText, 
+  CheckCircle, 
+  Activity, 
+  Globe, 
+  User, 
+  Award, 
+  FileCheck, 
+  AlertCircle,
+  Eye,
+  Download,
+  Clock,
+  Trash2,
+  Settings,
+  ShieldCheck
 } from 'lucide-react-native';
 
 // --- IMPORTS ---
-// Ensuring correct relative paths to your project structure
+// Robust relative paths to ensure stability
 import { supabase } from '../../lib/supabase';
 import { COLORS, SPACING } from '../../constants/Theme';
 import { GlassCard } from '../../components/GlassCard';
 
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 // --- TYPES ---
-// Defining the shape of the Profile Settings to prevent TypeScript errors
+// Comprehensive interface defining all editable profile fields
 interface ProfileSettings {
   id?: number;
   bio: string;
+  headline: string; // Ensuring headline is managed
   is_looking_for_work: boolean;
   github_url: string;
   linkedin_url: string;
   cv_url: string | null;
-  certification_url?: string | null; // Added for Certs support
+  certification_url: string | null;
   profile_image_url: string | null;
   email?: string;
+  updated_at?: string;
+}
+
+// Log entry type for the Audit Log section
+interface StatusLog {
+  id: number;
+  created_at: string;
+  status_text: string;
 }
 
 // --- CONSTANTS ---
-// Status options for the live indicator
+// Status options with color codes for visual distinction
 const STATUS_OPTIONS = [
-  { label: '🟢 OPEN TO WORK', value: 'OPEN TO WORK', active: true },
-  { label: '🟡 BUSY / CONTRACT', value: 'CURRENTLY BUSY', active: false },
-  { label: '🔴 OFFLINE', value: 'OFFLINE', active: false },
-  { label: '✈️ TRAVELLING', value: 'TRAVELLING', active: false },
+  { label: '🟢 OPEN TO WORK', value: 'OPEN TO WORK', color: COLORS.success },
+  { label: '🟡 BUSY / CONTRACT', value: 'CURRENTLY BUSY', color: '#FFC107' },
+  { label: '🔴 OFFLINE', value: 'OFFLINE', color: COLORS.error },
+  { label: '✈️ TRAVELLING', value: 'TRAVELLING', color: '#2196F3' },
 ];
 
+// --- MAIN COMPONENT ---
 export default function Dashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -47,12 +90,16 @@ export default function Dashboard() {
 
   // --- STATE MANAGEMENT ---
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState<string>('');
   
-  // Initialize with default types to prevent 'any' errors and null crashes
+  const [currentStatus, setCurrentStatus] = useState<string>('');
+  const [recentLogs, setRecentLogs] = useState<StatusLog[]>([]);
+  
+  // Profile State with safe defaults to prevent null crashes
   const [profile, setProfile] = useState<ProfileSettings>({
     bio: '',
+    headline: '',
     is_looking_for_work: false,
     github_url: '',
     linkedin_url: '',
@@ -67,8 +114,7 @@ export default function Dashboard() {
   }, []);
 
   // --- DATA FETCHING ---
-  async function fetchDashboardData() {
-    setLoading(true);
+  const fetchDashboardData = useCallback(async () => {
     try {
       // 1. Fetch Profile Settings
       const { data: profileData, error: profileError } = await supabase
@@ -79,10 +125,10 @@ export default function Dashboard() {
       if (profileData) {
         setProfile(profileData);
       } else if (profileError && profileError.code !== 'PGRST116') {
-         console.error('Profile fetch error:', profileError);
+         console.error('Profile fetch error:', profileError.message);
       }
 
-      // 2. Fetch Latest Status Log
+      // 2. Fetch Latest Status
       const { data: statusData } = await supabase
         .from('status_logs')
         .select('status_text')
@@ -96,42 +142,68 @@ export default function Dashboard() {
         setCurrentStatus('OFFLINE');
       }
 
+      // 3. Fetch Recent Audit Logs (History)
+      const { data: logsData } = await supabase
+        .from('status_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (logsData) setRecentLogs(logsData);
+
     } catch (e: any) {
       console.error('Error fetching dashboard:', e);
-      Alert.alert('Error', 'Could not load dashboard data. Please check your connection.');
+      Alert.alert('Connection Error', 'Could not load dashboard data. Please check your internet connection.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // --- ACTIONS ---
 
-  // 1. Update Status (Real-time)
+  // 1. Update Global Status
   async function updateStatus(newStatus: string) {
     if (newStatus === currentStatus) return;
     setSaving(true);
     
     try {
-      // Determine if this status implies "looking for work" for the badge
+      // Determine if this status implies "looking for work" for the public badge
       const isLooking = newStatus.includes('OPEN');
       
-      // Update Profile "Open to Work" boolean in main table
-      await supabase
+      // Update Profile "Open to Work" boolean
+      const { error: profileUpdateError } = await supabase
         .from('profile_settings')
         .update({ is_looking_for_work: isLooking })
         .eq('id', profile.id);
+
+      if (profileUpdateError) throw profileUpdateError;
       
-      // Insert new log entry for tracking history
-      const { error } = await supabase
+      // Log the status change
+      const { error: logError } = await supabase
         .from('status_logs')
         .insert([{ status_text: newStatus, is_active: true }]);
 
-      if (error) throw error;
+      if (logError) throw logError;
 
+      // Update Local State Optimistically
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setCurrentStatus(newStatus);
       setProfile(prev => ({ ...prev, is_looking_for_work: isLooking }));
       
-      // Optimistic feedback
+      // Refresh logs to show the new entry
+      const { data: updatedLogs } = await supabase
+        .from('status_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (updatedLogs) setRecentLogs(updatedLogs);
+
       if (Platform.OS !== 'web') {
         Alert.alert('Status Updated', `Global status set to: ${newStatus}`);
       }
@@ -151,11 +223,10 @@ export default function Dashboard() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: true, // Needed for simple upload logic without blobs on some platforms
+        base64: true, // Required for Supabase upload compatibility
       });
 
       if (!result.canceled && result.assets[0].base64) {
-        // We use the base64 helper method for image upload
         uploadFile(result.assets[0].base64, 'image/jpeg', 'profile_image_url', 'portfolio-images');
       }
     } catch (e) {
@@ -175,19 +246,19 @@ export default function Dashboard() {
          const fileUri = result.assets[0].uri;
          const { data: { user } } = await supabase.auth.getUser();
          
-         // Basic auth check
+         // Security check
          if (!user) {
-             Alert.alert("Error", "You must be logged in.");
+             Alert.alert("Authentication Error", "You must be logged in to upload files.");
              return;
          }
 
          setSaving(true);
          
-         // Scoped path for RLS: userId/filename
+         // Create user-scoped path: userId/cv_timestamp.pdf
          const column = type === 'cv' ? 'cv_url' : 'certification_url';
          const fileName = `${user.id}/${column}_${Date.now()}.pdf`;
          
-         // Fetch blob from URI (Cross-platform compatibility)
+         // Fetch blob from URI (Robust Cross-platform compatibility)
          const response = await fetch(fileUri);
          const blob = await response.blob();
          
@@ -201,7 +272,7 @@ export default function Dashboard() {
          if (!error) {
             const { data } = supabase.storage.from('portfolio-docs').getPublicUrl(fileName);
             
-            // Update Database Record
+            // Update Database Record with new public URL
             const updatePayload: any = {};
             updatePayload[column] = data.publicUrl;
 
@@ -210,10 +281,10 @@ export default function Dashboard() {
                 .update(updatePayload)
                 .eq('id', profile.id);
             
-            // Update Local State with new URL
+            // Update Local State
             setProfile(prev => ({ ...prev, [column]: data.publicUrl }));
             
-            Alert.alert('Success', `${type.toUpperCase()} Uploaded successfully.`);
+            Alert.alert('Success', `${type === 'cv' ? 'Resume' : 'Certification'} uploaded successfully.`);
          } else {
             throw error;
          }
@@ -226,17 +297,45 @@ export default function Dashboard() {
     }
   }
 
-  // Helper for generic Image uploads using Base64 (Standard for Expo ImagePicker)
+  // 4. Delete Asset (Clear CV or Cert)
+  async function deleteAsset(type: 'cv' | 'cert') {
+    Alert.alert(
+      "Remove Document?",
+      "Are you sure you want to remove this file from your public profile?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Remove", 
+          style: "destructive", 
+          onPress: async () => {
+             setSaving(true);
+             const column = type === 'cv' ? 'cv_url' : 'certification_url';
+             
+             // Update DB to null
+             await supabase
+                .from('profile_settings')
+                .update({ [column]: null })
+                .eq('id', profile.id);
+             
+             setProfile(prev => ({ ...prev, [column]: null }));
+             setSaving(false);
+          }
+        }
+      ]
+    );
+  }
+
+  // 5. Generic Image Upload Helper
   async function uploadFile(base64: string, mime: string, column: keyof ProfileSettings, bucket: string) {
     setSaving(true);
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("No user");
+        if (!user) throw new Error("No authenticated user found.");
 
         const fileExt = mime.split('/')[1];
         const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
         
-        // Convert base64 to binary
+        // Convert base64 to binary array buffer
         const arrayBuffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
         
         const { error } = await supabase.storage.from(bucket).upload(fileName, arrayBuffer, { 
@@ -263,18 +362,17 @@ export default function Dashboard() {
     }
   }
 
-  // 4. Save Text Fields (Bio, Links)
+  // 6. Save Text Settings (Bio, Links, Headline)
   async function saveSettings() {
-    setSaving(true);
-    
-    // Basic validation
-    if (!profile.bio) {
-        Alert.alert("Missing Info", "Bio cannot be empty.");
-        setSaving(false);
+    if (!profile.headline.trim()) {
+        Alert.alert("Validation Error", "Headline cannot be empty.");
         return;
     }
-
+    
+    setSaving(true);
+    
     const { error } = await supabase.from('profile_settings').update({
+        headline: profile.headline,
         bio: profile.bio,
         github_url: profile.github_url,
         linkedin_url: profile.linkedin_url
@@ -289,11 +387,11 @@ export default function Dashboard() {
     }
   }
 
-  // 5. Logout Handler
+  // 7. Logout Handler
   async function handleLogout() {
-    Alert.alert("Logout", "Are you sure?", [
+    Alert.alert("Logout", "Are you sure you want to exit the admin panel?", [
         { text: "Cancel", style: "cancel" },
-        { text: "Confirm", style: "destructive", onPress: async () => {
+        { text: "Logout", style: "destructive", onPress: async () => {
             await supabase.auth.signOut();
             router.replace('/');
         }}
@@ -318,7 +416,10 @@ export default function Dashboard() {
       {/* --- HEADER --- */}
       <View style={styles.header}>
         <View>
-            <Text style={styles.title}>DASHBOARD</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                <ShieldCheck size={20} color={COLORS.primary} />
+                <Text style={styles.title}>DASHBOARD</Text>
+            </View>
             <Text style={styles.subtitle}>Welcome back, Admin.</Text>
         </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
@@ -327,11 +428,34 @@ export default function Dashboard() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+      >
         
+        {/* --- ANALYTICS PREVIEW --- */}
+        <View style={styles.analyticsRow}>
+            <GlassCard style={styles.analyticCard}>
+                <Eye size={20} color={COLORS.secondary} />
+                <Text style={styles.analyticValue}>1.2k</Text>
+                <Text style={styles.analyticLabel}>VIEWS</Text>
+            </GlassCard>
+            <GlassCard style={styles.analyticCard}>
+                <Download size={20} color={COLORS.success} />
+                <Text style={styles.analyticValue}>{profile.cv_url ? '45' : '0'}</Text>
+                <Text style={styles.analyticLabel}>RESUME DLs</Text>
+            </GlassCard>
+            <GlassCard style={styles.analyticCard}>
+                <Activity size={20} color={COLORS.primary} />
+                <Text style={styles.analyticValue}>98%</Text>
+                <Text style={styles.analyticLabel}>UPTIME</Text>
+            </GlassCard>
+        </View>
+
         {/* --- STATUS SECTION --- */}
         <Text style={styles.sectionTitle}>
-            <Activity size={14} color={COLORS.primary} style={{marginRight: 8}}/> LIVE STATUS
+            <Activity size={14} color={COLORS.primary} style={{marginRight: 8}}/> LIVE STATUS CONTROL
         </Text>
         <GlassCard style={styles.statusCard}>
             <View style={styles.statusGrid}>
@@ -340,20 +464,24 @@ export default function Dashboard() {
                     return (
                         <TouchableOpacity
                             key={option.value}
-                            style={[styles.statusButton, isActive && styles.activeStatusButton]}
+                            style={[
+                                styles.statusButton, 
+                                isActive && styles.activeStatusButton,
+                                isActive && { borderColor: option.color, backgroundColor: `${option.color}20` }
+                            ]}
                             onPress={() => updateStatus(option.value)}
                             disabled={saving}
                         >
-                            <Text style={[styles.statusLabel, isActive && styles.activeStatusLabel]}>
+                            <Text style={[styles.statusLabel, isActive && { color: option.color }]}>
                                 {option.label}
                             </Text>
-                            {isActive && <CheckCircle size={16} color={COLORS.background} style={{ marginLeft: 6 }} />}
+                            {isActive && <CheckCircle size={16} color={option.color} style={{ marginLeft: 6 }} />}
                         </TouchableOpacity>
                     );
                 })}
             </View>
             <Text style={styles.statusHint}>
-                This updates the pulsing indicator on your homepage instantly.
+                Updates the public availability indicator instantly.
             </Text>
         </GlassCard>
 
@@ -386,69 +514,90 @@ export default function Dashboard() {
             </TouchableOpacity>
 
             {/* CV CARD */}
-            <TouchableOpacity 
-                onPress={() => pickDocument('cv')} 
-                style={[styles.uploadCard, styles.dashedCard, isDesktop && { flex: 1 }]}
-                activeOpacity={0.7}
-            >
-                <View style={styles.iconCircle}>
-                    <FileText color={COLORS.primary} size={24} />
-                </View>
-                <View style={styles.uploadMeta}>
-                    <Text style={styles.uploadTitle}>Curriculum Vitae</Text>
-                    <Text style={styles.uploadSub}>
-                        {profile.cv_url ? '✅ Active PDF Uploaded' : 'Upload PDF'}
-                    </Text>
-                    {profile.cv_url && (
-                        <Text style={styles.fileLink} numberOfLines={1}>
-                            {profile.cv_url.split('/').pop()}
+            <View style={[styles.uploadCardWrapper, isDesktop && { flex: 1 }]}>
+                <TouchableOpacity 
+                    onPress={() => pickDocument('cv')} 
+                    style={[styles.uploadCard, styles.dashedCard, { flex: 1 }]}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.iconCircle}>
+                        <FileText color={COLORS.primary} size={24} />
+                    </View>
+                    <View style={styles.uploadMeta}>
+                        <Text style={styles.uploadTitle}>Curriculum Vitae</Text>
+                        <Text style={styles.uploadSub}>
+                            {profile.cv_url ? '✅ Active PDF Uploaded' : 'Upload PDF'}
                         </Text>
-                    )}
-                </View>
-                <View style={styles.uploadAction}>
-                   {profile.cv_url ? <CheckCircle size={20} color={COLORS.success} /> : <AlertCircle size={20} color={COLORS.textDim} />}
-                </View>
-            </TouchableOpacity>
+                        {profile.cv_url && (
+                            <Text style={styles.fileLink} numberOfLines={1}>
+                                {profile.cv_url.split('/').pop()}
+                            </Text>
+                        )}
+                    </View>
+                </TouchableOpacity>
+                {/* Delete Button for CV */}
+                {profile.cv_url && (
+                    <TouchableOpacity style={styles.deleteAssetBtn} onPress={() => deleteAsset('cv')}>
+                        <Trash2 size={16} color={COLORS.error} />
+                    </TouchableOpacity>
+                )}
+            </View>
 
             {/* CERTIFICATION CARD */}
-            <TouchableOpacity 
-                onPress={() => pickDocument('cert')} 
-                style={[styles.uploadCard, styles.dashedCard, isDesktop && { flex: 1 }]}
-                activeOpacity={0.7}
-            >
-                <View style={[styles.iconCircle, {backgroundColor: 'rgba(255,215,0,0.1)'}]}>
-                    <Award color="#FFD700" size={24} />
-                </View>
-                <View style={styles.uploadMeta}>
-                    <Text style={styles.uploadTitle}>Certification</Text>
-                    <Text style={styles.uploadSub}>
-                        {profile.certification_url ? '✅ Proof Active' : 'Upload Proof'}
-                    </Text>
-                </View>
-                <View style={styles.uploadAction}>
-                   {profile.certification_url ? <CheckCircle size={20} color={COLORS.success} /> : <AlertCircle size={20} color={COLORS.textDim} />}
-                </View>
-            </TouchableOpacity>
+            <View style={[styles.uploadCardWrapper, isDesktop && { flex: 1 }]}>
+                <TouchableOpacity 
+                    onPress={() => pickDocument('cert')} 
+                    style={[styles.uploadCard, styles.dashedCard, { flex: 1 }]}
+                    activeOpacity={0.7}
+                >
+                    <View style={[styles.iconCircle, {backgroundColor: 'rgba(255,215,0,0.1)'}]}>
+                        <Award color="#FFD700" size={24} />
+                    </View>
+                    <View style={styles.uploadMeta}>
+                        <Text style={styles.uploadTitle}>Certification</Text>
+                        <Text style={styles.uploadSub}>
+                            {profile.certification_url ? '✅ Proof Active' : 'Upload Proof'}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+                 {/* Delete Button for Cert */}
+                 {profile.certification_url && (
+                    <TouchableOpacity style={styles.deleteAssetBtn} onPress={() => deleteAsset('cert')}>
+                        <Trash2 size={16} color={COLORS.error} />
+                    </TouchableOpacity>
+                )}
+            </View>
         </View>
 
         <View style={styles.divider} />
 
         {/* --- LINKS & BIO SECTION --- */}
         <Text style={styles.sectionTitle}>
-            <Globe size={14} color={COLORS.success} style={{marginRight: 8}}/> PUBLIC LINKS & BIO
+            <Globe size={14} color={COLORS.success} style={{marginRight: 8}}/> PUBLIC PROFILE SETTINGS
         </Text>
         
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <GlassCard style={styles.formCard}>
                 
+                {/* HEADLINE INPUT (New Feature) */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>HEADLINE (e.g. Java Fullstack Developer)</Text>
+                    <TextInput 
+                        style={styles.input} 
+                        value={profile.headline || ''} // FIX: Ensures no null crash
+                        onChangeText={t => setProfile({...profile, headline: t})}
+                        placeholderTextColor={COLORS.textDim} 
+                    />
+                </View>
+
                 {/* BIO INPUT */}
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>PROFESSIONAL BIO</Text>
                     <TextInput 
-                        style={styles.input} 
+                        style={[styles.input, styles.textArea]} 
                         value={profile.bio || ''} 
                         onChangeText={t => setProfile({...profile, bio: t})}
-                        placeholder="e.g. Full Stack Developer based in Sweden"
+                        placeholder="Summarize your experience and goals..."
                         placeholderTextColor={COLORS.textDim} 
                         multiline
                     />
@@ -491,13 +640,26 @@ export default function Dashboard() {
                     ) : (
                         <>
                             <Save size={18} color={COLORS.background} style={{ marginRight: 8 }} />
-                            <Text style={styles.btnText}>SAVE CHANGES</Text>
+                            <Text style={styles.btnText}>SAVE ALL CHANGES</Text>
                         </>
                     )}
                 </TouchableOpacity>
 
             </GlassCard>
         </KeyboardAvoidingView>
+
+        {/* --- AUDIT LOG (History) --- */}
+        {recentLogs.length > 0 && (
+            <View style={styles.auditSection}>
+                <Text style={styles.sectionTitle}><Clock size={14} color={COLORS.textDim}/> RECENT ACTIVITY</Text>
+                {recentLogs.map((log) => (
+                    <View key={log.id} style={styles.logItem}>
+                        <Text style={styles.logText}>Updated status to: {log.status_text}</Text>
+                        <Text style={styles.logDate}>{new Date(log.created_at).toLocaleDateString()}</Text>
+                    </View>
+                ))}
+            </View>
+        )}
 
         <View style={{height: 100}}/>
       </ScrollView>
@@ -551,7 +713,7 @@ const styles = StyleSheet.create({
       flexDirection: 'row', 
       alignItems: 'center', 
       gap: 6, 
-      backgroundColor: 'rgba(255,255,255,0.05)', 
+      backgroundColor: 'rgba(255,50,50,0.1)', 
       paddingVertical: 8, 
       paddingHorizontal: 12, 
       borderRadius: 8, 
@@ -563,6 +725,32 @@ const styles = StyleSheet.create({
       fontSize: 10, 
       fontWeight: 'bold', 
       letterSpacing: 1 
+  },
+
+  // Analytics
+  analyticsRow: {
+      flexDirection: 'row',
+      gap: SPACING.m,
+      marginBottom: SPACING.l
+  },
+  analyticCard: {
+      flex: 1,
+      padding: SPACING.m,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.03)'
+  },
+  analyticValue: {
+      color: COLORS.text,
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginTop: 4
+  },
+  analyticLabel: {
+      color: COLORS.textDim,
+      fontSize: 10,
+      fontWeight: 'bold',
+      marginTop: 2
   },
   
   // Sections
@@ -607,7 +795,7 @@ const styles = StyleSheet.create({
       flexDirection: 'row' 
   },
   activeStatusButton: { 
-      backgroundColor: COLORS.primary, 
+      backgroundColor: 'rgba(255,255,255,0.1)', 
       borderColor: COLORS.primary 
   },
   statusLabel: { 
@@ -616,7 +804,7 @@ const styles = StyleSheet.create({
       fontWeight: 'bold' 
   },
   activeStatusLabel: { 
-      color: COLORS.background 
+      color: COLORS.text 
   },
   statusHint: { 
       color: COLORS.textDim, 
@@ -630,6 +818,10 @@ const styles = StyleSheet.create({
   row: { 
       gap: SPACING.m 
   },
+  uploadCardWrapper: {
+      flex: 1,
+      position: 'relative'
+  },
   uploadCard: { 
       flexDirection: 'row', 
       alignItems: 'center', 
@@ -638,7 +830,8 @@ const styles = StyleSheet.create({
       borderRadius: 12, 
       borderWidth: 1, 
       borderColor: COLORS.border, 
-      marginBottom: 8 
+      marginBottom: 8,
+      height: 80
   },
   dashedCard: { 
       borderStyle: 'dashed', 
@@ -677,10 +870,15 @@ const styles = StyleSheet.create({
       color: COLORS.primary, 
       fontSize: 10, 
       marginTop: 4, 
-      maxWidth: 200 
+      maxWidth: 150 
   },
-  uploadAction: { 
-      marginLeft: SPACING.m 
+  deleteAssetBtn: {
+      position: 'absolute',
+      right: 10,
+      top: 25,
+      padding: 5,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      borderRadius: 20
   },
   iconCircle: { 
       width: 40, 
@@ -722,6 +920,10 @@ const styles = StyleSheet.create({
       borderRadius: 8, 
       fontSize: 14 
   },
+  textArea: {
+      height: 100,
+      textAlignVertical: 'top'
+  },
   saveBtn: { 
       backgroundColor: COLORS.primary, 
       padding: 14, 
@@ -736,5 +938,26 @@ const styles = StyleSheet.create({
       fontWeight: 'bold', 
       fontSize: 12, 
       letterSpacing: 1 
+  },
+
+  // Audit Logs
+  auditSection: {
+      marginTop: SPACING.xl,
+      opacity: 0.7
+  },
+  logItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.05)'
+  },
+  logText: {
+      color: COLORS.text,
+      fontSize: 11
+  },
+  logDate: {
+      color: COLORS.textDim,
+      fontSize: 10
   }
 });

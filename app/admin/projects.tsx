@@ -51,7 +51,7 @@ interface ValidationErrors {
   urls?: string;
 }
 
-// --- DEMO DATA (This allows you to load your current portfolio into the DB to edit it) ---
+// --- DEMO DATA ---
 const DEMO_PROJECTS = [
   {
     title: 'NorthFinance',
@@ -180,9 +180,9 @@ export default function AdminProjects() {
     setEditingId(-1); // -1 indicates NEW project
     setForm({ title: '', description: '', tags: '', github_url: '', live_url: '', image_url: null });
     setErrors({});
+    // Scroll handling for mobile is critical so the user sees the form
     if (!isDesktop) {
-        // Scroll to editor on mobile
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     }
   };
 
@@ -198,7 +198,7 @@ export default function AdminProjects() {
     });
     setErrors({});
     if (!isDesktop) {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     }
   };
 
@@ -482,13 +482,15 @@ export default function AdminProjects() {
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary}/>}
+            // Fix scrolling issue by ensuring contentContainerStyle grows
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           >
             {loading ? (
               <ActivityIndicator color={COLORS.primary} style={{ marginTop: 50 }} />
             ) : filteredProjects.length === 0 ? (
               <View style={styles.emptyState}>
                 <AlertCircle color={COLORS.textDim} size={40} />
-                <Text style={styles.emptyStateText}>No projects found.</Text>
+                <Text style={styles.emptyStateText}>No projects found matching your criteria.</Text>
                 
                 {/* THIS IS THE FIX: Load Demo Data Button if DB is empty */}
                 {projects.length === 0 && !searchQuery && (
@@ -501,7 +503,6 @@ export default function AdminProjects() {
             ) : (
               filteredProjects.map((p, index) => renderProjectItem(p, index))
             )}
-            <View style={{ height: 100 }} />
           </ScrollView>
         </View>
 
@@ -511,19 +512,18 @@ export default function AdminProjects() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={[styles.editorSection, isDesktop && { flex: 1, maxWidth: 500 }]}
           >
-            <GlassCard style={styles.editorCard}>
-              <View style={styles.editorHeader}>
-                <View>
-                  <Text style={styles.editorTitle}>{editingId === -1 ? 'Create Project' : 'Edit Project'}</Text>
-                  <Text style={styles.editorSubtitle}>Fill in the details below</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <GlassCard style={styles.editorCard}>
+                <View style={styles.editorHeader}>
+                  <View>
+                    <Text style={styles.editorTitle}>{editingId === -1 ? 'Create Project' : 'Edit Project'}</Text>
+                    <Text style={styles.editorSubtitle}>Fill in the details below</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setEditingId(null)} style={styles.closeBtn}>
+                    <X color={COLORS.text} size={20} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setEditingId(null)} style={styles.closeBtn}>
-                  <X color={COLORS.text} size={20} />
-                </TouchableOpacity>
-              </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                
                 {/* Image Uploader */}
                 <TouchableOpacity style={[styles.imageUpload, !!errors.title && styles.inputError]} onPress={pickImage}>
                   {form.image_url ? (
@@ -629,8 +629,8 @@ export default function AdminProjects() {
                   )}
                 </TouchableOpacity>
 
-              </ScrollView>
-            </GlassCard>
+              </GlassCard>
+            </ScrollView>
           </KeyboardAvoidingView>
         )}
       </View>
