@@ -15,10 +15,13 @@ import {
   LayoutAnimation, 
   UIManager, 
   RefreshControl, 
-  Animated,
+  Animated, 
   Easing
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+
+// --- ICON PACK ---
+// Importing comprehensive icon set for UI elements
 import { 
   Github, 
   Linkedin, 
@@ -39,27 +42,28 @@ import {
   Briefcase, 
   ArrowUp, 
   Award, 
-  FileText,
-  CheckCircle,
-  Cpu
+  FileText, 
+  CheckCircle, 
+  Cpu,
+  Monitor
 } from 'lucide-react-native';
 
 // --- CUSTOM COMPONENTS ---
-// These components handle the glassmorphism effects and real-time status updates
+// Robust relative paths to your component library
 import { GlassCard } from '../components/GlassCard'; 
 import { LiveStatus } from '../components/LiveStatus'; 
 import { GlassScheduler } from '../components/GlassScheduler'; 
 import { COLORS, SPACING, LAYOUT } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
 
-// Enable LayoutAnimation for Android
-// This is required for smooth state transitions on Android devices
+// --- CONFIGURATION ---
+// Enable LayoutAnimation for Android devices for smooth transitions
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// --- ASSETS CONFIGURATION ---
-// These require() calls ensure images are bundled into the binary for instant loading without network requests
+// --- ASSETS ---
+// Pre-loading local assets to ensure zero layout shift
 const ProjectImages = {
   north: require('../assets/images/Northm.png'),
   pantry: require('../assets/images/pantryApp.png'),
@@ -68,11 +72,11 @@ const ProjectImages = {
 };
 
 // ** FORCE LOCAL PROFILE IMAGE **
-// This bypasses the DB URL issue completely and guarantees an image loads instantly.
+// Bypasses DB latency for immediate First Contentful Paint
 const LocalProfile = require('../assets/images/profileIcon.png');
 
-// --- TYPES & INTERFACES ---
-// Strict typing ensures data integrity throughout the application
+// --- DATA TYPES ---
+// Strict interfaces for Type safety across the application
 
 interface Project {
   id: number;
@@ -88,67 +92,67 @@ interface Project {
 
 interface ProfileSettings {
   id: number;
-  headline: string; // NEW FIELD: Controls the Hero Title
+  headline: string; // The Hero text (e.g. "Java Fullstack Developer")
   bio: string;
   is_looking_for_work: boolean;
   github_url: string;
   linkedin_url: string;
   cv_url: string | null;            // Resume PDF URL
-  certification_url: string | null; // Certification PDF URL
+  certification_url: string | null; // Java Certification PDF URL
   profile_image_url: string | null;
 }
 
-// --- HELPERS ---
+// --- UTILITIES ---
 
 /**
- * Returns the appropriate icon component for a given tech stack tag.
- * Handles extensive variations of common tech names to ensure a rich visual experience.
+ * Maps tech stack strings to Lucide Icons.
+ * Covers Frontend, Backend, DevOps, and Security domains.
  */
 const getTechIcon = (tag: string, color: string, size: number = 14) => {
   const t = tag.toLowerCase().trim();
   
-  // Frontend / UI Frameworks
-  if (t.includes('react') || t.includes('front') || t.includes('next') || t.includes('native') || t.includes('expo') || t.includes('tailwind') || t.includes('css') || t.includes('html')) 
+  // Frameworks & Libraries
+  if (t.includes('react') || t.includes('front') || t.includes('next') || t.includes('native') || t.includes('expo')) 
     return <Layout size={size} color={color} />;
   
-  // Backend / Languages
-  if (t.includes('java') || t.includes('spring') || t.includes('kotlin') || t.includes('c#') || t.includes('net') || t.includes('go') || t.includes('rust')) 
+  // Backend Languages
+  if (t.includes('java') || t.includes('spring') || t.includes('kotlin') || t.includes('c#')) 
     return <Coffee size={size} color={color} />;
   
-  // Database / Storage
-  if (t.includes('data') || t.includes('sql') || t.includes('firebase') || t.includes('postgres') || t.includes('supabase') || t.includes('mongo') || t.includes('redis')) 
+  // Data & Storage
+  if (t.includes('data') || t.includes('sql') || t.includes('firebase') || t.includes('postgres') || t.includes('supabase')) 
     return <Database size={size} color={color} />;
   
-  // Security / Auth
-  if (t.includes('security') || t.includes('auth') || t.includes('oauth') || t.includes('jwt') || t.includes('keycloak') || t.includes('encryption')) 
+  // Security
+  if (t.includes('security') || t.includes('auth') || t.includes('jwt') || t.includes('encryption')) 
     return <Shield size={size} color={color} />;
   
-  // Server / API
-  if (t.includes('node') || t.includes('express') || t.includes('api') || t.includes('graphql') || t.includes('rest') || t.includes('server')) 
+  // Infrastructure / DevOps
+  if (t.includes('docker') || t.includes('aws') || t.includes('cloud') || t.includes('git') || t.includes('ci/cd'))
+    return <Cpu size={size} color={color} />;
+    
+  // Server-side
+  if (t.includes('node') || t.includes('express') || t.includes('api')) 
     return <Server size={size} color={color} />;
   
-  // Code / Scripting
-  if (t.includes('ts') || t.includes('type') || t.includes('js') || t.includes('javascript') || t.includes('python') || t.includes('bash')) 
+  // Scripting
+  if (t.includes('ts') || t.includes('type') || t.includes('js') || t.includes('python')) 
     return <Code size={size} color={color} />;
-  
-  // DevOps / Infrastructure
-  if (t.includes('docker') || t.includes('aws') || t.includes('cloud') || t.includes('git') || t.includes('ci/cd') || t.includes('kubernetes'))
-    return <Cpu size={size} color={color} />;
 
-  // Default Fallback
+  // Default
   return <Terminal size={size} color={color} />;
 };
 
 /**
- * Validates email format using standard regex
+ * Validates email format using regex
  */
 const isValidEmail = (email: string) => {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);
 };
 
-// --- FALLBACK DATA ---
-// High-quality default data so the portfolio never looks empty during initial load or error states.
+// --- DEFAULT STATE ---
+// Used when DB is empty or loading
 const FALLBACK_PROJECTS: Project[] = [
   {
     id: 1,
@@ -185,8 +189,9 @@ const FALLBACK_PROJECTS: Project[] = [
   }
 ];
 
-// --- BACKGROUND PARTICLE COMPONENT ---
-// Adds a subtle, high-end animated background effect to the Hero Card
+// --- VISUAL COMPONENTS ---
+
+// Background particle effect for the Hero Card
 const Particle = ({ delay }: { delay: number }) => {
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -242,7 +247,7 @@ const Particle = ({ delay }: { delay: number }) => {
   );
 };
 
-// --- MAIN COMPONENT ---
+// --- APP COMPONENT ---
 export default function PortfolioHome() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
@@ -252,18 +257,21 @@ export default function PortfolioHome() {
   const fadeAnim = useRef(new Animated.Value(0)).current; 
   const slideUpAnim = useRef(new Animated.Value(50)).current;
 
-  // BREAKPOINTS
+  // Breakpoints
   const isDesktop = width > 1024;
   const isTablet = width > 768 && width <= 1024;
   const isMobile = width <= 768;
 
-  // STATE
+  // Data State
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  
+  // UI State
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
-  // Contact Form State
+  const [error, setError] = useState<string | null>(null);
+
+  // Form State
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formMessage, setFormMessage] = useState('');
@@ -272,9 +280,10 @@ export default function PortfolioHome() {
   // --- DATA FETCHING ---
   const fetchData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
+    setError(null);
     
     try {
-      // Fetch Profile & Projects concurrently for performance
+      // Parallel fetch for optimal performance
       const [profileResponse, projectsResponse] = await Promise.all([
         supabase.from('profile_settings').select('*').single(),
         supabase.from('projects').select('*').order('display_order', { ascending: true })
@@ -283,10 +292,10 @@ export default function PortfolioHome() {
       if (profileResponse.data) {
         setProfile(profileResponse.data);
       } else {
-        // Safe Default Profile if DB is empty
+        // Updated Default Profile with "Java Fullstack" as requested
         setProfile({
             id: 0,
-            headline: "Full Stack Architect & Security Specialist",
+            headline: "Java Fullstack Developer",
             bio: "I build accessible, human-centered web applications with a focus on scalable backend architecture, robust security, and intuitive interfaces.",
             is_looking_for_work: true,
             github_url: "",
@@ -303,7 +312,7 @@ export default function PortfolioHome() {
         setProjects(FALLBACK_PROJECTS);
       }
       
-      // Trigger Entry Animations once data loads
+      // Animate In
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -319,7 +328,6 @@ export default function PortfolioHome() {
 
     } catch (e: any) {
       console.error('Fetch error:', e);
-      // Fallback in case of DB connection failure
       setProjects(FALLBACK_PROJECTS);
     } finally {
       setLoading(false);
@@ -336,9 +344,9 @@ export default function PortfolioHome() {
     fetchData(true);
   }, [fetchData]);
 
-  // --- ACTIONS ---
+  // --- INTERACTIONS ---
+  
   const handleSendEmail = async () => {
-    // Robust Validation
     if (!formName.trim() || !formEmail.trim() || !formMessage.trim()) {
       Alert.alert('Missing Information', 'Please fill out all fields before sending.');
       return;
@@ -375,7 +383,7 @@ export default function PortfolioHome() {
     if (url) {
       Linking.openURL(url).catch(err => Alert.alert('Error', 'Could not open link: ' + url));
     } else {
-        Alert.alert('Notice', 'This link is not yet configured or uploaded.');
+        Alert.alert('Notice', 'This document is not yet uploaded.');
     }
   };
 
@@ -383,7 +391,7 @@ export default function PortfolioHome() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  // --- RENDER SECTIONS ---
+  // --- RENDER HELPERS ---
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -429,9 +437,9 @@ export default function PortfolioHome() {
                     </Text>
                 </View>
 
-                {/* DYNAMIC HEADLINE FROM DB */}
+                {/* DYNAMIC HEADLINE (Fallback updated to Java Fullstack Developer) */}
                 <Text style={styles.heroSubtitle}>
-                    {profile?.headline || 'Full Stack Architect & Security Specialist'}
+                    {profile?.headline || 'Java Fullstack Developer'}
                 </Text>
                 
                 <Text style={styles.heroDesc}>
@@ -440,8 +448,7 @@ export default function PortfolioHome() {
 
                 <View style={styles.divider} />
 
-                {/* --- CREDENTIALS ROW (SIDE BY SIDE) --- */}
-                {/* This is the key fix for the layout you requested */}
+                {/* --- CREDENTIALS ROW (SIDE BY SIDE FIX) --- */}
                 <View style={[styles.credentialsRow, isMobile && { flexDirection: 'column' }]}>
                     
                     {/* RESUME BUTTON */}
@@ -454,7 +461,7 @@ export default function PortfolioHome() {
                         <Text style={styles.primaryButtonText}>RESUME</Text>
                     </TouchableOpacity>
                     
-                    {/* CERTIFICATE BUTTON */}
+                    {/* CERTIFICATION BUTTON (Connected to profile.certification_url) */}
                     <TouchableOpacity 
                       style={[styles.credentialBtn, styles.secondaryButton]} 
                       onPress={() => profile?.certification_url ? openLink(profile.certification_url) : Alert.alert('Info', 'Certification upload pending.')}
@@ -475,14 +482,12 @@ export default function PortfolioHome() {
         {/* IMAGE CARD (FORCED LOCAL IMAGE) */}
         <View style={[styles.heroImageContainer, isDesktop ? { width: '45%', alignItems: 'flex-end' } : { width: '100%', alignItems: 'center', marginBottom: SPACING.xl }]}>
             <GlassCard style={[styles.imageCard, { borderRadius: 1000 }]}>
-                
-                {/* FORCE LOCAL IMAGE HERE AS REQUESTED */}
+                {/* FORCE LOCAL IMAGE AS REQUESTED */}
                 <Image 
                     source={LocalProfile} 
                     style={{ width: isMobile ? 240 : 400, height: isMobile ? 240 : 400, borderRadius: 1000 }} 
                     resizeMode="cover" 
                 />
-
             </GlassCard>
         </View>
     </View>
@@ -521,7 +526,7 @@ export default function PortfolioHome() {
             { title: 'Frontend', icon: Layout, color: COLORS.primary, list: 'React, React Native, TypeScript, Tailwind, MUI' },
             { title: 'Backend', icon: Server, color: COLORS.secondary, list: 'Java, Spring Boot, Node.js, REST APIs, PostgreSQL' },
             { title: 'Security', icon: Lock, color: COLORS.error, list: 'Ethical Hacking, OAuth2, JWT, Secure Design' },
-            { title: 'Tools', icon: Briefcase, color: COLORS.success, list: 'Git, Docker, Postman, Linux/Ubuntu, Supabase' }
+            { title: 'Tools & Cloud', icon: Briefcase, color: COLORS.success, list: 'Git, Docker, Google Cloud, Firebase, Postman, Linux/Ubuntu' }
         ].map((skill, i) => (
             <View key={i} style={{ width: isMobile ? '100%' : '48%', flexGrow: 1 }}>
                 <GlassCard style={styles.skillCard}>
