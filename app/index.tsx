@@ -296,9 +296,9 @@ export default function PortfolioHome() {
         setProfile({
             id: 0,
             headline: "Java Fullstack Developer",
-            bio: "I build accessible, human-centered web applications with a focus on scalable backend architecture, robust security, and intuitive interfaces.",
             is_looking_for_work: true,
-            github_url: "",
+            bio: "Java Fullstack Engineer Architecting secure, scalable, and cross-platform digital ecosystems with a systems-level perspective from the infrastructure up",
+            github_url: "https://github.com/AlexBuildsLTS/",
             linkedin_url: "",
             cv_url: null,
             certification_url: null,
@@ -443,7 +443,7 @@ export default function PortfolioHome() {
                 </Text>
                 
                 <Text style={styles.heroDesc}>
-                    I build accessible, human-centered web applications with a focus on scalable backend architecture, robust security, and intuitive interfaces.
+                    Java Fullstack Engineer Architecting secure, scalable, and cross-platform digital ecosystems with a systems-level perspective from the infrastructure up.
                 </Text>
 
                 <View style={styles.divider} />
