@@ -297,7 +297,7 @@ export default function PortfolioHome() {
           id: 0,
           headline: 'Java Fullstack Developer',
           is_looking_for_work: true,
-          bio: 'Java Fullstack Engineer Architecting secure, scalable, and cross-platform digital ecosystems with a systems-level perspective from the infrastructure up',
+          bio: 'Java-Fullstack Engineer | Architecting High-Performance Ecosystems Bridging the gap between high-integrity distributed backends and seamless, intuitive interfaces.',
           github_url: 'https://github.com/AlexBuildsLTS/',
           linkedin_url: '',
           cv_url: null,
