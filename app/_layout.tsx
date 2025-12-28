@@ -3,34 +3,36 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { COLORS } from '../constants/Theme';
 
-// Prevent auto-hiding splash screen
+/**
+ * RootLayout: Architectural entry point.
+ * We use GestureHandlerRootView to support Reanimated 3 interactions.
+ */
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    // Standard system fonts fallback handled in usage if these fail, 
-    // but assuming you might add Inter later. For now, we rely on system.
+    // Add custom Swiss-style fonts here (e.g., Inter, Arimo, or Neue Haas)
   });
 
   useEffect(() => {
-    if (loaded || !loaded) { // Simplified for demo; usually wait for loaded
+    if (loaded) {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: COLORS.background },
-          animation: 'fade',
+          animation: 'fade_from_bottom',
         }}
       />
-    </View>
+    </GestureHandlerRootView>
   );
 }
