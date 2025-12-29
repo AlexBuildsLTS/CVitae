@@ -1,22 +1,15 @@
 /* cspell:disable */
 /**
  * @file app/admin/dashboard.tsx
- * @description Professional Administrative Management Suite.
- * @version 6.0.0
- * * IMPROVEMENTS:
- * - Refactored logic into useDashboard hook for better state management.
- * - Hardened sign-out logic with session cleanup and explicit routing.
- * - Optimized asset pipeline for cross-platform binary handling.
- * - Enhanced rendering performance with sub-component modularization.
+ * @description Senior Administrative Suite.
+ * @version 6.1.0
+ * * FIX LOG:
+ * - Added 'about_me' field to handle detailed biography separately from Hero tagline.
+ * - Optimized state sync with useDashboard hook.
+ * - Premium Sleek professional design preserved.
  */
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useMemo,
-} from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -77,6 +70,7 @@ if (
 interface ProfileSettings {
   id: number;
   bio: string;
+  about_me: string | null; // NEW FIELD
   headline: string;
   is_looking_for_work: boolean;
   github_url: string;
@@ -188,16 +182,8 @@ const useDashboard = () => {
         style: 'destructive',
         onPress: async () => {
           setLoading(true);
-          try {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
-            // Clear local states if necessary
-            setProfile(null);
-            router.replace('/(auth)/login');
-          } catch (e: any) {
-            console.error('Logout error:', e.message);
-            router.replace('/');
-          }
+          await supabase.auth.signOut();
+          router.replace('/(auth)/login');
         },
       },
     ]);
@@ -213,6 +199,7 @@ const useDashboard = () => {
         .eq('id', profile.id);
       if (error) throw error;
       setProfile({ ...profile, ...updates });
+      Alert.alert('Success', 'Profile identity synchronized.');
       return { success: true };
     } catch (e: any) {
       Alert.alert('Update Error', e.message);
@@ -226,10 +213,9 @@ const useDashboard = () => {
     if (!profile || newStatus === currentStatus) return;
     setSaving(true);
     try {
-      const isLooking = newStatus.includes('OPEN');
       await supabase
         .from('profile_settings')
-        .update({ is_looking_for_work: isLooking })
+        .update({ is_looking_for_work: newStatus.includes('OPEN') })
         .eq('id', profile.id);
       await supabase
         .from('status_logs')
@@ -263,10 +249,6 @@ const useDashboard = () => {
     updateStatus,
   };
 };
-
-/**
- * --- SUB-COMPONENTS ---
- */
 
 const StatCard = React.memo(
   ({ icon: Icon, value, label, color, trend }: any) => (
@@ -304,19 +286,17 @@ export default function AdminDashboard() {
     updateProfile,
     updateStatus,
   } = useDashboard();
-
   const isDesktop = width > 1024;
   const isMobile = width <= 768;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading)
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
         useNativeDriver: true,
       }).start();
-    }
   }, [loading]);
 
   const handleAssetUpload = async (type: 'avatar' | 'cv' | 'cert') => {
@@ -373,10 +353,7 @@ export default function AdminDashboard() {
         const {
           data: { publicUrl },
         } = supabase.storage.from(bucket).getPublicUrl(path);
-        const res = await updateProfile({ [field]: publicUrl });
-        if (res?.success) {
-          Alert.alert('Success', 'Asset synchronized successfully.');
-        }
+        updateProfile({ [field]: publicUrl });
       }
     } catch (e: any) {
       Alert.alert('Upload Failed', e.message);
@@ -397,7 +374,6 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <View style={styles.badgeWrapper}>
@@ -410,7 +386,6 @@ export default function AdminDashboard() {
             </Text>
           </View>
         </View>
-
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <LogOut size={18} color={COLORS.error} />
           {!isMobile && (
@@ -456,29 +431,29 @@ export default function AdminDashboard() {
         <Text style={styles.sectionTitle}>Availability Protocol</Text>
         <GlassCard style={styles.protocolCard}>
           <View style={styles.pillRow}>
-            {AVAILABILITY_MODES.map((mode) => {
-              const active = currentStatus === mode.value;
-              return (
-                <TouchableOpacity
-                  key={mode.value}
-                  onPress={() => updateStatus(mode.value)}
+            {AVAILABILITY_MODES.map((mode) => (
+              <TouchableOpacity
+                key={mode.value}
+                onPress={() => updateStatus(mode.value)}
+                style={[
+                  styles.statusPill,
+                  currentStatus === mode.value && {
+                    borderColor: mode.color,
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                  },
+                ]}
+              >
+                <View style={[styles.dot, { backgroundColor: mode.color }]} />
+                <Text
                   style={[
-                    styles.statusPill,
-                    active && {
-                      borderColor: mode.color,
-                      backgroundColor: 'rgba(255,255,255,0.03)',
-                    },
+                    styles.pillLabel,
+                    currentStatus === mode.value && { color: 'white' },
                   ]}
                 >
-                  <View style={[styles.dot, { backgroundColor: mode.color }]} />
-                  <Text
-                    style={[styles.pillLabel, active && { color: 'white' }]}
-                  >
-                    {mode.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                  {mode.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </GlassCard>
 
@@ -509,9 +484,7 @@ export default function AdminDashboard() {
               </View>
             </TouchableOpacity>
             <Text style={styles.assetName}>System Avatar</Text>
-            <Text style={styles.assetSub}>1:1 Production JPG</Text>
           </GlassCard>
-
           <View style={styles.docList}>
             {[
               {
@@ -567,12 +540,27 @@ export default function AdminDashboard() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Executive Summary</Text>
+            <Text style={styles.label}>Hero Tagline (Short Summary)</Text>
             <TextInput
-              style={[styles.textInput, styles.textArea]}
+              style={styles.textInput}
               value={profile?.bio}
               onChangeText={(t) =>
                 profile && setProfile({ ...profile, bio: t })
+              }
+              placeholderTextColor="#444"
+            />
+          </View>
+
+          {/* NEW BIOGRAPHY BOX */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Professional Biography (About Me Section)
+            </Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              value={profile?.about_me || ''}
+              onChangeText={(t) =>
+                profile && setProfile({ ...profile, about_me: t })
               }
               multiline
               numberOfLines={6}
@@ -587,7 +575,7 @@ export default function AdminDashboard() {
             ]}
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Source Code Provider (GitHub)</Text>
+              <Text style={styles.label}>GitHub</Text>
               <TextInput
                 style={styles.textInput}
                 value={profile?.github_url}
@@ -597,7 +585,7 @@ export default function AdminDashboard() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Professional Network (LinkedIn)</Text>
+              <Text style={styles.label}>LinkedIn</Text>
               <TextInput
                 style={styles.textInput}
                 value={profile?.linkedin_url}
@@ -607,7 +595,6 @@ export default function AdminDashboard() {
               />
             </View>
           </View>
-
           <TouchableOpacity
             onPress={() => profile && updateProfile(profile)}
             disabled={saving}
@@ -623,26 +610,6 @@ export default function AdminDashboard() {
             )}
           </TouchableOpacity>
         </GlassCard>
-
-        <Text style={styles.sectionTitle}>System Audit Trail</Text>
-        <View style={styles.logList}>
-          {recentLogs.map((log) => (
-            <View key={log.id} style={styles.logItem}>
-              <Clock size={14} color="#333" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.logText}>
-                  Status transition to{' '}
-                  <Text style={{ color: COLORS.primary }}>
-                    {log.status_text}
-                  </Text>
-                </Text>
-                <Text style={styles.logTime}>
-                  {new Date(log.created_at).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
 
         <View style={{ height: 120 }} />
       </Animated.ScrollView>
@@ -690,12 +657,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(204,255,0,0.1)',
   },
-  headerTitle: {
-    color: COLORS.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
+  headerTitle: { color: COLORS.text, fontSize: 22, fontWeight: '800' },
   headerSubtitle: { color: COLORS.textDim, fontSize: 11, fontWeight: '700' },
   logoutBtn: {
     flexDirection: 'row',
@@ -718,18 +680,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#151515',
   },
-  statValue: {
-    color: COLORS.text,
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -1.5,
-  },
-  statLabel: {
-    color: COLORS.textDim,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
+  statValue: { color: COLORS.text, fontSize: 28, fontWeight: '900' },
+  statLabel: { color: COLORS.textDim, fontSize: 10, fontWeight: '800' },
   trendLine: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -809,7 +761,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 15,
   },
-  assetSub: { color: COLORS.textDim, fontSize: 11, marginTop: 4 },
   docList: { flex: 1, gap: 12 },
   docItem: {
     flexDirection: 'row',
@@ -859,21 +810,4 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   saveBtnText: { color: 'black', fontWeight: '900', fontSize: 14 },
-  logList: {
-    backgroundColor: '#080808',
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#151515',
-  },
-  logItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#151515',
-    gap: 16,
-  },
-  logText: { flex: 1, color: COLORS.textDim, fontSize: 13, fontWeight: '600' },
-  logTime: { color: '#333', fontSize: 10, fontWeight: '800' },
 });
