@@ -362,15 +362,13 @@ export default function PortfolioHome() {
     }
     setSending(true);
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert([
-          {
-            sender_name: form.name.trim(),
-            sender_email: form.email.trim(),
-            message_text: form.message.trim(),
-          },
-        ]);
+      const { error } = await supabase.from('messages').insert([
+        {
+          sender_name: form.name.trim(),
+          sender_email: form.email.trim(),
+          message_text: form.message.trim(),
+        },
+      ]);
       if (error) throw error;
       Alert.alert('Success', 'Message transmitted.');
       setForm({ name: '', email: '', message: '' });
@@ -585,7 +583,7 @@ export default function PortfolioHome() {
         </View>
 
         <View style={styles.spacer} />
-        <Text style={styles.sectionTitle}>FEATURED_REGISTRY</Text>
+        <Text style={styles.sectionTitle}>Portfolio</Text>
         <View style={styles.projectsContainer}>
           {projects.map((project) => (
             <ProjectCard
