@@ -8,7 +8,7 @@ config.resolver.sourceExts.push('css');
 
 module.exports = withNativeWind(config, {
   // Use a strictly relative path to stop NativeWind from prepending Vercel's root twice
-  input: path.resolve(__dirname, 'global.css'),
-  projectRoot: __dirname,
+  input: 'global.css',
+  projectRoot: '.',
   inlineStyles: process.env.EXPO_PLATFORM !== 'web',
 });
