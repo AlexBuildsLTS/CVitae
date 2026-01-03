@@ -1,6 +1,8 @@
 /**
  * @file components/PhilosophyBento.tsx
- * @description Code For Tech Card and Growth. 
+ * @description Enterprise-grade technical foundation grid.
+ * Categorizes a high-performance stack including Deno Edge Functions and Firebase Admin logic.
+ * Optimized for mission-critical financial and pediatric care ecosystems.
  */
 import React from 'react';
 import { View, Text, Platform, Pressable } from 'react-native';
@@ -21,7 +23,23 @@ interface PhilosophyProps {
   } | null;
 }
 
-// Hover Wrapper for the animations
+/**
+ * @component TechBadge
+ * @description Stylized technology chip with high-contrast labeling and neon accents.
+ */
+const TechBadge = ({ label }: { label: string }) => (
+  <View className="bg-black/50 border border-zinc-800 px-2 py-1 rounded-md mr-1.5 mb-1.5 flex-row items-center">
+    <View className="w-1 h-1 rounded-full bg-[#a3e635] mr-2" />
+    <Text className="text-[10px] font-bold text-[#a3e635] uppercase tracking-widest">
+      {label}
+    </Text>
+  </View>
+);
+
+/**
+ * @component AnimatedCard
+ * @description Performance-optimized wrapper providing interactive scaling and border highlights.
+ */
 const AnimatedCard = ({
   children,
   style,
@@ -30,25 +48,23 @@ const AnimatedCard = ({
   style?: any;
 }) => {
   const scale = useSharedValue(1);
-  const borderOpacity = useSharedValue(0.1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: withSpring(scale.value, { damping: 10, stiffness: 100 }) },
     ],
     borderColor:
-      scale.value === 1.05 ? COLORS.primary : 'rgba(63, 63, 70, 0.4)',
+      scale.value === 1.05 ? COLORS.primary : 'rgba(39, 39, 42, 0.8)',
+    borderWidth: 1,
   }));
 
   return (
     <Pressable
       onHoverIn={() => {
         scale.value = 1.05;
-        borderOpacity.value = 0.8;
       }}
       onHoverOut={() => {
         scale.value = 1;
-        borderOpacity.value = 0.1;
       }}
       style={{ flex: 1 }}
     >
@@ -58,6 +74,43 @@ const AnimatedCard = ({
 };
 
 const PhilosophyBento = ({ profile }: PhilosophyProps) => {
+  /**
+   * Technical Pillars Mapping
+   * Integrated with Edge Functions (Deno) and Cloud Admin logic (Firebase/Supabase).
+   */
+  const technicalPillars = [
+    {
+      icon: 'server',
+      title: 'Backend',
+      stack: [
+        'Java',
+        'Spring Boot',
+        'Node.js',
+        'Deno (Edge)',
+        'PostgreSQL (RLS)',
+      ],
+      color: COLORS.secondary,
+    },
+    {
+      icon: 'layers',
+      title: 'Frontend',
+      stack: ['React', 'React Native', 'TypeScript', 'Tailwind'],
+      color: COLORS.primary,
+    },
+    {
+      icon: 'shield-checkmark',
+      title: 'Security',
+      stack: ['Secure Auth', 'OAuth2', 'JWT', 'RLS Protocols'],
+      color: '#ef4444',
+    },
+    {
+      icon: 'code-slash',
+      title: 'Infrastructure',
+      stack: ['Git', 'Docker', 'Supabase', 'Firebase', 'Linux/Kubuntu'],
+      color: '#f97316',
+    },
+  ];
+
   return (
     <View className="w-full py-8 md:py-12">
       {/* SECTION HEADER */}
@@ -77,15 +130,13 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
         </Text>
       </View>
 
-      {/* ROW 1: 2 LARGE SYMMETRICAL CARDS */}
+      {/* ROW 1: PRIMARY BIOGRAPHY AND GROWTH DATA */}
       <View className="flex-row flex-wrap mb-6 -m-3">
-        {/* Biography Card */}
+        {/* Biography Module */}
         <View className="w-full p-3 lg:w-1/2">
           <AnimatedCard
             style={{
-              backgroundColor: 'rgba(34, 34, 34, 1)',
-              borderWeight: 1,
-              p: 6,
+              backgroundColor: 'rgba(18, 18, 18, 1)',
               borderRadius: 48,
               minHeight: 380,
               justifyContent: 'space-between',
@@ -102,19 +153,17 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
             <View className="p-6 md:p-12 mt-[-40]">
               <Text className="text-lg leading-relaxed text-zinc-400">
                 {profile?.about_me ||
-                  'Certified Java Fullstack Developer. I focus on building scalable systems.'}
+                  'Certified Java Fullstack Developer specializing in high-performance, tri-lateral ecosystems.'}
               </Text>
             </View>
           </AnimatedCard>
         </View>
 
-        {/* Growth Card */}
+        {/* Growth Module */}
         <View className="w-full p-3 lg:w-1/2">
           <AnimatedCard
             style={{
-              backgroundColor: 'rgba(34, 34, 34, 1)',
-              borderWeight: 1,
-              p: 6,
+              backgroundColor: 'rgba(18, 18, 18, 1)',
               borderRadius: 48,
               minHeight: 380,
               justifyContent: 'space-between',
@@ -131,66 +180,42 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
             <View className="p-6 md:p-12 mt-[-40]">
               <Text className="text-lg leading-relaxed text-zinc-400">
                 {profile?.growth_summary ||
-                  '6+ months of daily technical immersion.'}
+                  'Focused on transactional idempotency and distributed consistency in mission-critical environments.'}
               </Text>
             </View>
           </AnimatedCard>
         </View>
       </View>
 
-      {/* ROW 2: 4 SYMMETRICAL PILLARS */}
+      {/* ROW 2: QUAD-PILLAR ARCHITECTURE */}
       <View className="flex-row flex-wrap -m-2">
-        {[
-          {
-            icon: 'server',
-            title: 'Backend',
-            text: 'Java, Spring Boot, Node.js, and PostgreSQL.',
-            color: COLORS.secondary,
-          },
-          {
-            icon: 'layers',
-            title: 'Frontend',
-            text: 'React, React Native, TypeScript, and Tailwind.',
-            color: COLORS.primary,
-          },
-          {
-            icon: 'shield-checkmark',
-            title: 'Security',
-            text: 'Secure Auth, OAuth2, JWT, and RLS Protocols.',
-            color: '#a80303',
-          },
-          {
-            icon: 'code-slash',
-            title: 'Infrastructure',
-            text: 'Git, Docker, Firebase, and VMware,VirtualBox,Hyper-V Linux/Ubuntu/Kali',
-            color: '#fc860f',
-          },
-        ].map((item, idx) => (
+        {technicalPillars.map((item, idx) => (
           <View key={idx} className="w-full p-2 md:w-1/2 lg:w-1/4">
             <AnimatedCard
               style={{
-                backgroundColor: 'rgba(34, 34, 34, 1)',
-                borderWeight: 1,
-                p: 4,
+                backgroundColor: 'rgba(18, 18, 18, 1)',
                 borderRadius: 32,
-                minHeight: 200,
-                justifyContent: 'space-between',
+                minHeight: 220,
+                justifyContent: 'flex-start',
               }}
             >
-              <View className="flex-row items-center p-4 gap-x-4 md:p-8">
+              {/* Pillar Title Module */}
+              <View className="flex-row items-center p-5 gap-x-4 md:p-8">
                 <Ionicons
                   name={item.icon as any}
-                  size={20}
+                  size={18}
                   color={item.color}
                 />
-                <Text className="text-lg font-bold tracking-tighter uppercase text-zinc-100">
+                <Text className="text-sm font-black tracking-widest uppercase text-zinc-100">
                   {item.title}
                 </Text>
               </View>
-              <View className="p-4 md:p-8 mt-[-20]">
-                <Text className="text-zinc-500 text-[11px] leading-5">
-                  {item.text}
-                </Text>
+
+              {/* Stack Badge Module */}
+              <View className="flex-row flex-wrap px-5 pb-5 md:px-8 md:pb-8">
+                {item.stack.map((tech, techIdx) => (
+                  <TechBadge key={techIdx} label={tech} />
+                ))}
               </View>
             </AnimatedCard>
           </View>

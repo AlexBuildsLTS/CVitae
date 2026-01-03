@@ -2,8 +2,8 @@ export const COLORS = {
   background: '#050505',
   surface: '#121212',
   surfaceHighlight: '#1E1E1E',
-  primary: '#CCFF00', // Cyberpunk Neon Green
-  secondary: '#9D4EDD', // Deep Purple
+  primary: '#a4f207', // Cyberpunk Neon Green
+  secondary: '#3c078c', // Deep Purple
   text: '#FFFFFF',
   textDim: '#888888',
   border: 'rgba(255, 255, 255, 0.1)',
@@ -12,8 +12,8 @@ export const COLORS = {
 };
 
 export const SPACING = {
-  xs: 4,
-  s: 8,
+  xs: 6,
+  s: 10,
   m: 16,
   l: 24,
   xl: 32,

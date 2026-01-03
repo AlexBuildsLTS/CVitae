@@ -54,6 +54,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: SPACING.l,
+    width: '100%',
     height: '100%',
   },
   overlay: {

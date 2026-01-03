@@ -414,7 +414,7 @@ export default function PortfolioHome() {
                     styles.statusText,
                     {
                       color: profile?.is_looking_for_work
-                        ? '#10b981'
+                        ? '#cfc104'
                         : COLORS.error,
                     },
                   ]}

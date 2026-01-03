@@ -109,7 +109,7 @@ const LivePulse = () => {
   return (
     <View style={styles.liveBadge}>
       <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
-      <Text style={styles.liveText}>REALTIME_NODE_ACTIVE</Text>
+      <Text style={styles.liveText}>REALTIME ACTIVE</Text>
     </View>
   );
 };
@@ -495,21 +495,26 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <Save size={20} color="black" />
-                <Text style={styles.saveBtnText}>COMMIT_IDENTITY_SYNC</Text>
+                <Text style={styles.saveBtnText}>SAVE CHANGES</Text>
               </>
             )}
           </TouchableOpacity>
         </GlassCard>
 
         {/* REFINED ASSET NODES */}
-        <Text style={styles.sectionTitle}>Technical Asset Nodes</Text>
+        <Text style={styles.sectionTitle}></Text>
         <View
           style={[
             styles.assetSplit,
             { flexDirection: isDesktop ? 'row' : 'column' },
           ]}
         >
-          <GlassCard style={StyleSheet.flatten([styles.avatarCard, isDesktop && { width: 340 }])}>
+          <GlassCard
+            style={StyleSheet.flatten([
+              styles.avatarCard,
+              isDesktop && { width: 340 },
+            ])}
+          >
             <TouchableOpacity
               onPress={() => handleAssetUpload('avatar')}
               style={styles.avatarWrapper}
@@ -531,21 +536,21 @@ export default function AdminDashboard() {
                 <Camera size={14} color="white" />
               </View>
             </TouchableOpacity>
-            <Text style={styles.assetNodeLabel}>System Avatar</Text>
+            <Text style={styles.assetNodeLabel}>Avatar</Text>
           </GlassCard>
 
           <View style={styles.docList}>
             {[
               {
                 type: 'cv',
-                label: 'Technical CV',
+                label: 'RESUME (CV)',
                 icon: FileCheck,
                 col: COLORS.primary,
                 url: profile?.cv_url,
               },
               {
                 type: 'cert',
-                label: 'Certification Bundle',
+                label: 'Certification',
                 icon: Award,
                 col: '#FACC15',
                 url: profile?.certification_url,
