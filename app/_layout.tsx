@@ -1,4 +1,3 @@
-// 1. IMPORTANT: This must be the first import for NativeWind v4
 import '../global.css';
 
 import { Stack } from 'expo-router';
