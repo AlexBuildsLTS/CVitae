@@ -1,4 +1,3 @@
-import '../../global.css';
 import { Tabs, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
