@@ -117,7 +117,7 @@ const isValidEmail = (email: string) =>
 /**
  * --- SUB-COMPONENTS ---
  */
-const Particle = React.memo(({ delay }: { delay: number }) => {
+const Particle = React.memo(function Particle({ delay }: { delay: number }) {
   const translateY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -168,9 +168,9 @@ const Particle = React.memo(({ delay }: { delay: number }) => {
   );
 });
 
-const ProjectCard = React.memo(({ project, isDesktop, isTablet }: any) => (
-  <View
-    style={[
+const ProjectCard = React.memo(function ProjectCard({ project, isDesktop, isTablet }: any) {
+  return (
+    <View style={[
       styles.projectWrapper,
       isDesktop
         ? { width: '48.5%' }
@@ -229,12 +229,11 @@ const ProjectCard = React.memo(({ project, isDesktop, isTablet }: any) => (
       </View>
     </GlassCard>
   </View>
-));
+  );
+});
 
-/**
- * --- MAIN COMPONENT ---
- */
 export default function PortfolioHome() {
+
   const router = useRouter();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -276,7 +275,7 @@ export default function PortfolioHome() {
         setRefreshing(false);
       }
     },
-    [fadeAnim]
+    [fadeAnim],
   );
 
   useEffect(() => {
@@ -559,7 +558,7 @@ export default function PortfolioHome() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © {new Date().getFullYear()} Alex Youssef // SYSTEM_ADMIN
+            © {new Date().getFullYear()} Alex Fredrik Youssef
           </Text>
           <View style={{ flexDirection: 'row', gap: 24, alignItems: 'center' }}>
             <TouchableOpacity
