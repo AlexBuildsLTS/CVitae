@@ -1,4 +1,9 @@
 /* cspell:disable */
+/**
+ * @file app/index.tsx
+ * @description Senior Portfolio Entry Point.
+ * Merged Features: Project Registry, Message Channel, Philosophy Bento, & Real-time Analytics.
+ */
 import React, {
   useEffect,
   useState,
@@ -12,7 +17,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Linking,
   TextInput,
@@ -21,9 +25,8 @@ import {
   useWindowDimensions,
   RefreshControl,
   Animated,
-  Easing,
-  FlatList,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter, Stack } from 'expo-router';
 
 // --- ICON PACK ---
@@ -32,8 +35,6 @@ import {
   Linkedin,
   Send,
   ExternalLink,
-  User,
-  Database,
   Shield,
   Layout,
   Server,
@@ -42,23 +43,23 @@ import {
   Code,
   Coffee,
   Terminal,
-  Briefcase,
   ArrowUp,
   Award,
   FileText,
-  CheckCircle,
   Cpu,
-  Monitor,
+  Database,
+  User,
 } from 'lucide-react-native';
 
-// --- CUSTOM COMPONENTS ---
+// --- CUSTOM MODULES ---
 import { GlassCard } from '../components/GlassCard';
 import { LiveStatus } from '../components/LiveStatus';
+import PhilosophyBento from '../components/PhilosophyBento';
 import { COLORS, SPACING } from '../constants/Theme';
 import { supabase } from '../lib/supabase';
 
 /**
- * --- DATA TYPES ---
+ * --- DATA INTERFACES ---
  */
 interface Project {
   id: number;
@@ -76,7 +77,8 @@ interface ProfileSettings {
   id: number;
   headline: string;
   bio: string;
-  about_me: string | null; // NEW FIELD TO PREVENT DUPLICATION
+  about_me: string | null;
+  growth_summary: string | null;
   is_looking_for_work: boolean;
   github_url: string;
   linkedin_url: string;
@@ -85,65 +87,32 @@ interface ProfileSettings {
   profile_image_url: string | null;
 }
 
-// --- ASSETS ---
-const ProjectImages = {
-  north: require('../assets/images/Northm.png'),
-  pantry: require('../assets/images/pantryApp.png'),
-  time: require('../assets/images/TimeApp.png'),
-  placeholder: require('../assets/images/icon.png'),
-};
-
 const LocalProfile = require('../assets/images/profileIcon.png');
+const ProjectPlaceholder = require('../assets/images/icon.png');
 
 /**
- * --- UTILITIES ---
+ * --- UI UTILITIES ---
  */
 const getTechIcon = (tag: string, color: string, size: number = 14) => {
   const t = tag.toLowerCase().trim();
-  if (
-    t.includes('react') ||
-    t.includes('front') ||
-    t.includes('native') ||
-    t.includes('expo')
-  )
+  if (t.includes('react') || t.includes('native') || t.includes('expo'))
     return <Layout size={size} color={color} />;
-  if (t.includes('java') || t.includes('spring') || t.includes('kotlin'))
+  if (t.includes('java') || t.includes('spring'))
     return <Coffee size={size} color={color} />;
   if (
     t.includes('data') ||
     t.includes('sql') ||
-    t.includes('postgres') ||
-    t.includes('supabase')
+    t.includes('supabase') ||
+    t.includes('postgres')
   )
     return <Database size={size} color={color} />;
-  if (t.includes('security') || t.includes('auth') || t.includes('encryption'))
+  if (t.includes('security') || t.includes('auth'))
     return <Shield size={size} color={color} />;
-  if (t.includes('docker') || t.includes('aws') || t.includes('git'))
-    return <Cpu size={size} color={color} />;
-  if (t.includes('node') || t.includes('express') || t.includes('api'))
-    return <Server size={size} color={color} />;
-  if (t.includes('ts') || t.includes('type') || t.includes('js'))
-    return <Code size={size} color={color} />;
-  return <Terminal size={size} color={color} />;
+  return <Code size={size} color={color} />;
 };
 
 const isValidEmail = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-const FALLBACK_PROJECTS: Project[] = [
-  {
-    id: 1,
-    title: 'NorthFinance',
-    description:
-      'Financial management application built with React Native and Supabase. Features OCR scanning and CPA portals.',
-    tags: ['React Native', 'TypeScript', 'Supabase'],
-    github_url: 'https://github.com/alexbuilds/northfinance',
-    live_url: null,
-    image_url: null,
-    local_image: ProjectImages.north,
-    display_order: 1,
-  },
-];
 
 /**
  * --- SUB-COMPONENTS ---
@@ -160,7 +129,6 @@ const Particle = React.memo(({ delay }: { delay: number }) => {
             toValue: -100,
             duration: 4000 + Math.random() * 2000,
             delay,
-            easing: Easing.linear,
             useNativeDriver: true,
           }),
           Animated.timing(translateY, {
@@ -215,13 +183,11 @@ const ProjectCard = React.memo(({ project, isDesktop, isTablet }: any) => (
       <View style={styles.projectImageContainer}>
         <Image
           source={
-            project.local_image ||
-            (project.image_url
-              ? { uri: project.image_url }
-              : ProjectImages.placeholder)
+            project.image_url ? { uri: project.image_url } : ProjectPlaceholder
           }
           style={styles.projectImage}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={500}
         />
         <View style={styles.imageOverlay} />
       </View>
@@ -235,7 +201,7 @@ const ProjectCard = React.memo(({ project, isDesktop, isTablet }: any) => (
             {project.tags?.map((tag: string, i: number) => (
               <View key={i} style={styles.tag}>
                 {getTechIcon(tag, COLORS.primary)}
-                <Text style={styles.tagText}>{tag}</Text>
+                <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
               </View>
             ))}
           </View>
@@ -246,7 +212,7 @@ const ProjectCard = React.memo(({ project, isDesktop, isTablet }: any) => (
                 style={styles.iconButton}
               >
                 <Github color={COLORS.textDim} size={18} />
-                <Text style={styles.linkTextSmall}>Code</Text>
+                <Text style={styles.linkTextSmall}>Github</Text>
               </TouchableOpacity>
             )}
             {project.live_url && (
@@ -265,27 +231,6 @@ const ProjectCard = React.memo(({ project, isDesktop, isTablet }: any) => (
   </View>
 ));
 
-const SkillCard = React.memo(
-  ({ title, icon: Icon, color, list, isMobile }: any) => (
-    <View style={{ width: isMobile ? '100%' : '48%', flexGrow: 1 }}>
-      <GlassCard style={styles.skillCard}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            marginBottom: 12,
-          }}
-        >
-          <Icon color={color} size={28} />
-          <Text style={styles.skillTitle}>{title}</Text>
-        </View>
-        <Text style={styles.skillList}>{list}</Text>
-      </GlassCard>
-    </View>
-  )
-);
-
 /**
  * --- MAIN COMPONENT ---
  */
@@ -293,9 +238,7 @@ export default function PortfolioHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
-
   const isDesktop = width > 1024;
-  const isTablet = width > 768 && width <= 1024;
   const isMobile = width <= 768;
 
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
@@ -306,7 +249,6 @@ export default function PortfolioHome() {
   const [sending, setSending] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUpAnim = useRef(new Animated.Value(50)).current;
 
   const fetchData = useCallback(
     async (isRefresh = false) => {
@@ -319,34 +261,30 @@ export default function PortfolioHome() {
             .select('*')
             .order('display_order', { ascending: true }),
         ]);
-
         if (pRes.data) setProfile(pRes.data);
         if (projRes.data?.length) setProjects(projRes.data);
-        else setProjects(FALLBACK_PROJECTS);
 
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.spring(slideUpAnim, {
-            toValue: 0,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-        ]).start();
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }).start();
       } catch (e) {
-        setProjects(FALLBACK_PROJECTS);
+        console.error('[FETCH_ERROR]:', e);
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [fadeAnim, slideUpAnim]
+    [fadeAnim]
   );
 
   useEffect(() => {
+    // 🛡️ ANALYTICS: Insert visit event to trigger Real-time dashboard
+    supabase
+      .from('analytics_events')
+      .insert({ event_type: 'page_view' })
+      .then(() => {});
     fetchData();
   }, [fetchData]);
 
@@ -357,7 +295,7 @@ export default function PortfolioHome() {
       !form.message.trim() ||
       !isValidEmail(form.email)
     ) {
-      Alert.alert('Validation Error', 'Please check your inputs.');
+      Alert.alert('Validation Error', 'Verification failed. Check inputs.');
       return;
     }
     setSending(true);
@@ -379,41 +317,11 @@ export default function PortfolioHome() {
     }
   };
 
-  const skillsData = useMemo(
-    () => [
-      {
-        title: 'Frontend',
-        icon: Layout,
-        color: COLORS.primary,
-        list: 'React, React Native, TypeScript, Tailwind, MUI',
-      },
-      {
-        title: 'Backend',
-        icon: Server,
-        color: COLORS.secondary,
-        list: 'Java, Spring Boot, Node.js, REST APIs, PostgreSQL',
-      },
-      {
-        title: 'Security',
-        icon: Lock,
-        color: COLORS.error,
-        list: 'Ethical Hacking, OAuth2, JWT, Secure Design',
-      },
-      {
-        title: 'Tools & Cloud',
-        icon: Briefcase,
-        color: COLORS.success,
-        list: 'Git, Docker, Google Cloud, Firebase, Postman, Linux/Ubuntu',
-      },
-    ],
-    []
-  );
-
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={COLORS.primary} size="large" />
-        <Text style={styles.loadingText}>INITIALIZING_PORTFOLIO_OS...</Text>
+        <Text style={styles.loadingText}>INITIALIZING_SYSTEM_CORE...</Text>
       </View>
     );
   }
@@ -435,18 +343,36 @@ export default function PortfolioHome() {
             tintColor={COLORS.primary}
           />
         }
-        style={{ opacity: fadeAnim, transform: [{ translateY: slideUpAnim }] }}
+        style={{ opacity: fadeAnim }}
       >
+        {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.push('/(auth)/login')}
-            style={styles.logoBadge}
-          >
-            <Text style={styles.logoBadgeText}>AY</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <TouchableOpacity
+              onPress={() => router.push('/(auth)/login')}
+              style={styles.logoBadge}
+            >
+              <Text style={styles.logoBadgeText}>AY</Text>
+            </TouchableOpacity>
+            {isDesktop && (
+              <View style={styles.socialHeader}>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(profile?.github_url || '#')}
+                >
+                  <Github size={18} color="#a1a1aa" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(profile?.linkedin_url || '#')}
+                >
+                  <Linkedin size={18} color="#a1a1aa" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
           {!isMobile && <LiveStatus />}
         </View>
 
+        {/* HERO */}
         <View
           style={[
             styles.heroContainer,
@@ -467,23 +393,33 @@ export default function PortfolioHome() {
                   <Particle key={i} delay={i * 500} />
                 ))}
               </View>
-              <Text style={styles.greeting}>Hello, I'm</Text>
+              <Text style={styles.greeting}>ACTIVE</Text>
               <Text style={[styles.heroName, { fontSize: isMobile ? 42 : 64 }]}>
                 Alex Youssef
               </Text>
 
               <View style={styles.statusBadge}>
+                {/* 🟢 EMERALD Logic */}
                 <View
                   style={[
                     styles.statusDot,
                     {
                       backgroundColor: profile?.is_looking_for_work
-                        ? COLORS.primary
+                        ? '#10b981'
                         : COLORS.error,
                     },
                   ]}
                 />
-                <Text style={styles.statusText}>
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      color: profile?.is_looking_for_work
+                        ? '#10b981'
+                        : COLORS.error,
+                    },
+                  ]}
+                >
                   {profile?.is_looking_for_work
                     ? 'OPEN TO WORK'
                     : 'CURRENTLY BUSY'}
@@ -491,31 +427,18 @@ export default function PortfolioHome() {
               </View>
 
               <Text style={styles.heroSubtitle}>
-                {profile?.headline || 'Java Fullstack Developer'}
+                {profile?.headline || 'Fullstack Engineer'}
               </Text>
-
-              {/* TAGLINE: Using 'bio' here for Hero */}
               <Text style={styles.heroDesc}>
-                {profile?.bio ||
-                  'Architecting secure, scalable digital ecosystems.'}
+                {profile?.bio || 'Architecting resilient digital ecosystems.'}
               </Text>
 
-              <View style={styles.divider} />
-              <View
-                style={[
-                  styles.credentialsRow,
-                  isMobile && { flexDirection: 'column' },
-                ]}
-              >
+              <View style={styles.credentialsRow}>
                 <TouchableOpacity
                   style={[styles.credentialBtn, styles.primaryButton]}
                   onPress={() => Linking.openURL(profile?.cv_url || '')}
                 >
-                  <FileText
-                    size={20}
-                    color={COLORS.background}
-                    style={{ marginRight: 8 }}
-                  />
+                  <FileText size={18} color={COLORS.background} />
                   <Text style={styles.primaryButtonText}>RESUME</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -524,11 +447,7 @@ export default function PortfolioHome() {
                     Linking.openURL(profile?.certification_url || '')
                   }
                 >
-                  <Award
-                    size={20}
-                    color={COLORS.text}
-                    style={{ marginRight: 8 }}
-                  />
+                  <Award size={18} color={COLORS.text} />
                   <Text style={styles.secondaryButtonText}>CREDENTIALS</Text>
                 </TouchableOpacity>
               </View>
@@ -547,50 +466,33 @@ export default function PortfolioHome() {
                   },
             ]}
           >
-            <GlassCard style={[styles.imageCard, { borderRadius: 1000 }]}>
+            <View style={styles.avatarBorder}>
               <Image
                 source={LocalProfile}
                 style={{
-                  width: isMobile ? 240 : 400,
-                  height: isMobile ? 240 : 400,
+                  width: isMobile ? 240 : 380,
+                  height: isMobile ? 240 : 380,
                   borderRadius: 1000,
                 }}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={500}
               />
-            </GlassCard>
+            </View>
           </View>
         </View>
 
         <View style={styles.spacer} />
-
-        {/* ABOUT: Using 'about_me' here to stop duplication */}
-        <GlassCard style={styles.aboutCard}>
-          <View style={styles.sectionHeaderRow}>
-            <User color={COLORS.primary} size={24} />
-            <Text style={styles.sectionHeader}>Biography</Text>
-          </View>
-          <Text style={styles.bodyText}>
-            {profile?.about_me ||
-              'Fullstack Engineer specializing in high-integrity systems.'}
-          </Text>
-        </GlassCard>
+        <PhilosophyBento profile={profile} />
 
         <View style={styles.spacer} />
-        <View style={styles.skillsGrid}>
-          {skillsData.map((skill, i) => (
-            <SkillCard key={i} {...skill} isMobile={isMobile} />
-          ))}
-        </View>
-
-        <View style={styles.spacer} />
-        <Text style={styles.sectionTitle}>Portfolio</Text>
+        <Text style={styles.sectionTitle}>Portfolio Registry</Text>
         <View style={styles.projectsContainer}>
           {projects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
               isDesktop={isDesktop}
-              isTablet={isTablet}
+              isTablet={width > 768}
             />
           ))}
         </View>
@@ -643,7 +545,7 @@ export default function PortfolioHome() {
                 <ActivityIndicator color={COLORS.background} />
               ) : (
                 <>
-                  <Text style={styles.sendButtonText}>TRANSMIT</Text>
+                  <Text style={styles.sendButtonText}>Send Message</Text>
                   <Send
                     size={16}
                     color={COLORS.background}
@@ -657,14 +559,23 @@ export default function PortfolioHome() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © {new Date().getFullYear()} Alex Youssef
+            © {new Date().getFullYear()} Alex Youssef // SYSTEM_ADMIN
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(auth)/login')}
-            style={styles.adminLock}
-          >
-            <Lock size={12} color={COLORS.surfaceHighlight} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 24, alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={() => Linking.openURL(profile?.github_url || '#')}
+            >
+              <Github size={18} color="#52525b" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => Linking.openURL(profile?.linkedin_url || '#')}
+            >
+              <Linkedin size={18} color="#52525b" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+              <Lock size={16} color="#27272a" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
@@ -690,7 +601,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: COLORS.textDim,
-    marginTop: SPACING.m,
+    marginTop: 20,
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '900',
@@ -726,6 +637,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoBadgeText: { fontWeight: '900', color: COLORS.background, fontSize: 16 },
+  socialHeader: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingLeft: 16,
+    borderLeftWidth: 1,
+    borderLeftColor: '#18181b',
+  },
   heroContainer: {
     gap: SPACING.l,
     marginBottom: SPACING.l,
@@ -735,56 +653,53 @@ const styles = StyleSheet.create({
   heroCard: { padding: SPACING.xl },
   greeting: {
     color: COLORS.textDim,
-    marginBottom: 4,
-    fontSize: 12,
-    letterSpacing: 2,
+    marginBottom: 8,
+    fontSize: 10,
+    letterSpacing: 3,
     fontWeight: '900',
   },
   heroName: {
     color: COLORS.text,
     fontWeight: '900',
     marginBottom: SPACING.m,
-    letterSpacing: -1.5,
+    letterSpacing: -2,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(204, 255, 0, 0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 100,
     marginBottom: SPACING.m,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  statusText: { color: COLORS.primary, fontSize: 10, fontWeight: '900' },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
+  statusText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   heroSubtitle: {
     color: COLORS.text,
     marginBottom: SPACING.m,
     fontWeight: '800',
-    fontSize: 24,
+    fontSize: 26,
   },
   heroDesc: {
     color: COLORS.textDim,
     fontSize: 16,
-    lineHeight: 26,
-    maxWidth: 600,
-    marginBottom: SPACING.l,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: SPACING.l,
-    opacity: 0.3,
+    lineHeight: 28,
+    maxWidth: 620,
+    marginBottom: SPACING.xl,
   },
   credentialsRow: { flexDirection: 'row', gap: SPACING.m },
   credentialBtn: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
   primaryButton: { backgroundColor: COLORS.primary },
   primaryButtonText: {
@@ -794,136 +709,120 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: '#18181b',
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   secondaryButtonText: { color: COLORS.text, fontWeight: '900', fontSize: 12 },
-  imageCard: { padding: SPACING.s },
-  heroImageContainer: { justifyContent: 'center' },
-  aboutCard: { padding: SPACING.xl },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.m,
-    marginBottom: SPACING.m,
+  heroImageContainer: { justifyContent: 'center' }, // Fixed: restored missing key
+  avatarBorder: {
+    borderRadius: 1000,
+    padding: 12,
+    backgroundColor: 'rgba(204,255,0,0.01)',
+    borderWidth: 1,
+    borderColor: 'rgba(204,255,0,0.05)',
   },
-  sectionHeader: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  bodyText: { color: COLORS.textDim, fontSize: 16, lineHeight: 28 },
   sectionTitle: {
     color: COLORS.text,
     fontSize: 24,
     fontWeight: '900',
     marginBottom: SPACING.l,
     letterSpacing: 2,
+    paddingLeft: 4,
   },
-  skillsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.m },
-  skillCard: {
-    padding: SPACING.l,
-    minHeight: 140,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  skillTitle: { color: COLORS.text, fontWeight: '800', fontSize: 18 },
-  skillList: { color: COLORS.textDim, fontSize: 14, lineHeight: 22 },
   projectsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: SPACING.m,
   },
-  projectWrapper: { marginBottom: SPACING.m },
-  projectCard: { height: '100%', padding: 0, overflow: 'hidden' },
-  projectImageContainer: { width: '100%', height: 200 },
+  projectWrapper: { marginBottom: SPACING.l },
+  projectCard: {
+    padding: 0,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#18181b',
+  },
+  projectImageContainer: { width: '100%', height: 240 },
   projectImage: { width: '100%', height: '100%' },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
-  projectContent: {
-    flex: 1,
-    justifyContent: 'space-between',
-    padding: SPACING.l,
-  },
-  projectTitle: {
-    color: COLORS.text,
-    fontSize: 22,
-    fontWeight: '900',
-    marginBottom: SPACING.s,
-  },
-  projectDesc: {
-    color: COLORS.textDim,
-    fontSize: 14,
-    marginBottom: SPACING.m,
-    lineHeight: 22,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: SPACING.l,
-  },
+  projectContent: { padding: SPACING.xl, gap: 14 },
+  projectTitle: { color: COLORS.text, fontSize: 22, fontWeight: '900' },
+  projectDesc: { color: COLORS.textDim, fontSize: 15, lineHeight: 24 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(204,255,0,0.03)',
+    backgroundColor: '#0d0d0d',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 100,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#151515',
   },
-  tagText: { color: COLORS.primary, fontSize: 10, fontWeight: '800' },
+  tagText: {
+    color: COLORS.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
   projectLinks: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: SPACING.s,
-    paddingTop: SPACING.s,
+    marginTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#151515',
   },
-  iconButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    padding: 8,
-    backgroundColor: '#0d0d0d',
-    borderRadius: 8,
+  iconButton: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  linkTextSmall: {
+    color: COLORS.textDim,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
-  linkTextSmall: { color: COLORS.textDim, fontSize: 12, fontWeight: '900' },
   liveButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 100,
   },
-  liveButtonText: { color: COLORS.background, fontSize: 11, fontWeight: '900' },
-  contactCard: { padding: SPACING.xl },
-  contactHeader: { color: COLORS.text, fontSize: 20, fontWeight: '800' },
-  formGap: { gap: SPACING.m },
-  rowInput: { flexDirection: 'row', gap: SPACING.m },
-  colInput: { flexDirection: 'column', gap: SPACING.m },
+  liveButtonText: {
+    color: COLORS.background,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  contactCard: { padding: 40, borderRadius: 40 },
+  contactHeader: {
+    color: COLORS.text,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  formGap: { gap: 16 },
+  rowInput: { flexDirection: 'row', gap: 16 },
+  colInput: { flexDirection: 'column', gap: 16 },
   input: {
     backgroundColor: '#080808',
     borderWidth: 1,
     borderColor: '#151515',
     color: COLORS.text,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     fontSize: 15,
   },
-  textArea: { minHeight: 120, textAlignVertical: 'top' },
+  textArea: { minHeight: 160, textAlignVertical: 'top' },
   sendButton: {
     backgroundColor: COLORS.text,
-    padding: 18,
-    borderRadius: 14,
+    padding: 20,
+    borderRadius: 18,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -934,25 +833,34 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   footer: {
-    marginTop: SPACING.xl * 2,
+    marginTop: 100,
+    paddingVertical: 60,
     borderTopWidth: 1,
     borderTopColor: '#151515',
-    paddingTop: SPACING.l,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 10,
   },
-  footerText: { color: COLORS.textDim, fontSize: 11, fontWeight: '700' },
-  adminLock: { padding: 10, opacity: 0.1 },
+  footerText: {
+    color: '#3f3f46',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  adminLock: { opacity: 0.1 },
   fab: {
     position: 'absolute',
     bottom: 40,
     right: 40,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
   },
 });

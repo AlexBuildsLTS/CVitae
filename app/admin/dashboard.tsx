@@ -1,12 +1,11 @@
 /* cspell:disable */
 /**
  * @file app/admin/dashboard.tsx
- * @description Senior Administrative Suite.
- * @version 6.1.0
- * * FIX LOG:
- * - Added 'about_me' field to handle detailed biography separately from Hero tagline.
- * - Optimized state sync with useDashboard hook.
- * - Premium Sleek professional design preserved.
+ * @description Refined Master Administrative Control Unit.
+ * VERSION: 10.0.0 (Enhanced Layout)
+ * UPGRADES:
+ * - Responsive Bento Analytics Grid (Mobile optimized).
+ * - FIXED: Path compliance for all uploads (public/admin/).
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -18,16 +17,13 @@ import {
   ScrollView,
   Alert,
   TextInput,
-  Image,
   ActivityIndicator,
   Platform,
   useWindowDimensions,
-  KeyboardAvoidingView,
   RefreshControl,
-  LayoutAnimation,
-  UIManager,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter, Stack } from 'expo-router';
@@ -39,16 +35,16 @@ import {
   LogOut,
   Camera,
   Save,
-  Activity,
-  User,
-  Award,
-  Clock,
-  ArrowUpRight,
   ShieldCheck,
   Download,
   Eye,
-  TrendingUp,
   FileCheck,
+  Zap,
+  Award,
+  ArrowUpRight,
+  User,
+  Globe,
+  TrendingUp,
 } from 'lucide-react-native';
 
 // System Primitives
@@ -56,22 +52,15 @@ import { supabase } from '../../lib/supabase';
 import { COLORS, SPACING } from '../../constants/Theme';
 import { GlassCard } from '../../components/GlassCard';
 
-// Platform Animation Guard
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 /**
  * --- DATA INTERFACES ---
  */
 interface ProfileSettings {
   id: number;
-  bio: string;
-  about_me: string | null; // NEW FIELD
   headline: string;
+  bio: string;
+  about_me: string | null;
+  growth_summary: string | null;
   is_looking_for_work: boolean;
   github_url: string;
   linkedin_url: string;
@@ -88,29 +77,50 @@ interface AnalyticsSnapshot {
   totalMessages: number;
 }
 
-interface StatusLog {
-  id: number;
-  created_at: string;
-  status_text: string;
-}
-
 const AVAILABILITY_MODES = [
-  { label: 'Available', value: 'OPEN TO WORK', color: COLORS.primary },
+  { label: 'Available', value: 'OPEN TO WORK', color: '#10b981' },
   { label: 'Busy', value: 'CURRENTLY BUSY', color: '#FACC15' },
   { label: 'Offline', value: 'OFFLINE', color: COLORS.error },
 ];
 
 /**
- * --- CUSTOM HOOKS ---
+ * --- UI SUB-COMPONENT: REAL-TIME PULSE ---
  */
-const useDashboard = () => {
+const LivePulse = () => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+  return (
+    <View style={styles.liveBadge}>
+      <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
+      <Text style={styles.liveText}>Live</Text>
+    </View>
+  );
+};
+
+export default function AdminDashboard() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileSettings | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string>('');
-  const [recentLogs, setRecentLogs] = useState<StatusLog[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSnapshot>({
     views: 0,
     cvDownloads: 0,
@@ -118,92 +128,99 @@ const useDashboard = () => {
     totalMessages: 0,
   });
 
+  const [imgRev, setImgRev] = useState(0);
+  const isDesktop = width > 1024;
+  const isMobile = width <= 768;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   const syncData = useCallback(async () => {
     try {
-      const [
-        profileRes,
-        statusRes,
-        logsRes,
-        viewsCount,
-        cvCount,
-        certCount,
-        msgCount,
-      ] = await Promise.all([
-        supabase.from('profile_settings').select('*').single(),
-        supabase
-          .from('status_logs')
-          .select('status_text')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single(),
-        supabase
-          .from('status_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(4),
-        supabase
-          .from('analytics_events')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_type', 'page_view'),
-        supabase
-          .from('analytics_events')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_type', 'cv_download'),
-        supabase
-          .from('analytics_events')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_type', 'cert_download'),
-        supabase.from('messages').select('id', { count: 'exact', head: true }),
-      ]);
+      const [pRes, sRes, vCount, cvCount, certCount, msgCount] =
+        await Promise.all([
+          supabase.from('profile_settings').select('*').single(),
+          supabase
+            .from('status_logs')
+            .select('status_text')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single(),
+          supabase
+            .from('analytics_events')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_type', 'page_view'),
+          supabase
+            .from('analytics_events')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_type', 'cv_download'),
+          supabase
+            .from('analytics_events')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_type', 'cert_download'),
+          supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true }),
+        ]);
 
-      if (profileRes.data) setProfile(profileRes.data);
-      if (statusRes.data) setCurrentStatus(statusRes.data.status_text);
-      if (logsRes.data) setRecentLogs(logsRes.data);
+      if (pRes.data) setProfile(pRes.data);
+      if (sRes.data) setCurrentStatus(sRes.data.status_text);
 
       setAnalytics({
-        views: viewsCount.count || 0,
+        views: vCount.count || 0,
         cvDownloads: cvCount.count || 0,
         certDownloads: certCount.count || 0,
         totalMessages: msgCount.count || 0,
       });
     } catch (e) {
-      console.error('[DASHBOARD_SYNC_FAIL]:', e);
+      console.error('[SYNC_ERROR]:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
     }
-  }, []);
+  }, [fadeAnim]);
+
+  useEffect(() => {
+    syncData();
+    const channel = supabase
+      .channel('admin-live-updates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'analytics_events' },
+        () => syncData()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [syncData]);
 
   const handleLogout = async () => {
-    Alert.alert('SYSTEM_EXIT', 'Confirm administrative sign-out?', [
-      { text: 'CANCEL', style: 'cancel' },
-      {
-        text: 'SIGN_OUT',
-        style: 'destructive',
-        onPress: async () => {
-          setLoading(true);
-          await supabase.auth.signOut();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      router.replace('/');
+    } catch (e: any) {
+      Alert.alert('LOGOUT_FAILED', e.message);
+      setLoading(false);
+    }
   };
 
-  const updateProfile = async (updates: Partial<ProfileSettings>) => {
+  const handleSave = async () => {
     if (!profile) return;
     setSaving(true);
     try {
       const { error } = await supabase
         .from('profile_settings')
-        .update(updates)
+        .update(profile)
         .eq('id', profile.id);
       if (error) throw error;
-      setProfile({ ...profile, ...updates });
-      Alert.alert('Success', 'Profile identity synchronized.');
-      return { success: true };
+      Alert.alert('SUCCESS', 'System Registry Synchronized.');
     } catch (e: any) {
-      Alert.alert('Update Error', e.message);
-      return { success: false };
+      Alert.alert('COMMIT_ERROR', e.message);
     } finally {
       setSaving(false);
     }
@@ -223,100 +240,27 @@ const useDashboard = () => {
       setCurrentStatus(newStatus);
       syncData();
     } catch (e: any) {
-      Alert.alert('Status Error', e.message);
+      Alert.alert('STATUS_UPDATE_FAIL', e.message);
     } finally {
       setSaving(false);
     }
   };
 
-  useEffect(() => {
-    syncData();
-  }, [syncData]);
-
-  return {
-    loading,
-    refreshing,
-    saving,
-    setSaving,
-    profile,
-    setProfile,
-    currentStatus,
-    recentLogs,
-    analytics,
-    syncData,
-    handleLogout,
-    updateProfile,
-    updateStatus,
-  };
-};
-
-const StatCard = React.memo(
-  ({ icon: Icon, value, label, color, trend }: any) => (
-    <GlassCard style={styles.statBox}>
-      <Icon size={22} color={color} />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      {trend && (
-        <View style={styles.trendLine}>
-          <TrendingUp size={10} color={COLORS.primary} />
-          <Text style={styles.trendValue}>{trend}</Text>
-        </View>
-      )}
-    </GlassCard>
-  )
-);
-
-/**
- * --- MAIN COMPONENT ---
- */
-export default function AdminDashboard() {
-  const { width } = useWindowDimensions();
-  const {
-    loading,
-    refreshing,
-    saving,
-    setSaving,
-    profile,
-    setProfile,
-    currentStatus,
-    recentLogs,
-    analytics,
-    syncData,
-    handleLogout,
-    updateProfile,
-    updateStatus,
-  } = useDashboard();
-  const isDesktop = width > 1024;
-  const isMobile = width <= 768;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!loading)
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }).start();
-  }, [loading]);
-
+  // RESTRICTED: Asset Upload Logic (Not touching Resume/Cert core functionality)
   const handleAssetUpload = async (type: 'avatar' | 'cv' | 'cert') => {
     if (!profile) return;
     setSaving(true);
     try {
-      let result;
-      if (type === 'avatar') {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.8,
-          base64: true,
-        });
-      } else {
-        result = await DocumentPicker.getDocumentAsync({
-          type: 'application/pdf',
-        });
-      }
+      let result =
+        type === 'avatar'
+          ? await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 1,
+              base64: true,
+            })
+          : await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
 
       if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
@@ -328,10 +272,13 @@ export default function AdminDashboard() {
             : type === 'cv'
             ? 'cv_url'
             : 'certification_url';
-        const ext = type === 'avatar' ? 'jpg' : 'pdf';
-        const path = `admin/${field}_${Date.now()}.${ext}`;
 
-        let body: any;
+        // MAINTAINED: Path compliance (public/) to satisfy RLS policy
+        const path = `public/admin/${field}_${Date.now()}.${
+          type === 'avatar' ? 'jpg' : 'pdf'
+        }`;
+
+        let body;
         if (type === 'avatar' && asset.base64) {
           const raw = atob(asset.base64);
           const uint8 = new Uint8Array(raw.length);
@@ -353,49 +300,55 @@ export default function AdminDashboard() {
         const {
           data: { publicUrl },
         } = supabase.storage.from(bucket).getPublicUrl(path);
-        updateProfile({ [field]: publicUrl });
+        const { error: dbErr } = await supabase
+          .from('profile_settings')
+          .update({ [field]: publicUrl })
+          .eq('id', profile.id);
+        if (dbErr) throw dbErr;
+
+        setProfile({ ...profile, [field]: publicUrl });
+        setImgRev((prev) => prev + 1);
+        Alert.alert('ASSET_SYNCED', 'New cloud asset is now active.');
       }
     } catch (e: any) {
-      Alert.alert('Upload Failed', e.message);
+      Alert.alert('UPLOAD_ERROR', e.message);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>SYNCHRONIZING_CORE...</Text>
+        <Text style={styles.loadingText}>SYNCHRONIZING_ADMIN_UNIT...</Text>
       </View>
     );
-  }
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* HEADER UNIT */}
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <View style={styles.badgeWrapper}>
-            <ShieldCheck size={22} color={COLORS.primary} />
-          </View>
+          <ShieldCheck size={24} color={COLORS.primary} />
           <View>
-            <Text style={styles.headerTitle}>System Dashboard</Text>
-            <Text style={styles.headerSubtitle}>
-              Administrative Control Unit
-            </Text>
+            <Text style={styles.headerTitle}>System Admin</Text>
+            <LivePulse />
           </View>
         </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <LogOut size={18} color={COLORS.error} />
-          {!isMobile && (
-            <Text style={styles.logoutText}>TERMINATE_SESSION</Text>
-          )}
+          {!isMobile && <Text style={styles.logoutText}>TERMINATE</Text>}
         </TouchableOpacity>
       </View>
 
       <Animated.ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isMobile && { padding: 16 },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -406,58 +359,149 @@ export default function AdminDashboard() {
         }
         style={{ opacity: fadeAnim }}
       >
-        <View style={styles.bentoGrid}>
-          <StatCard
-            icon={Eye}
-            value={analytics.views}
-            label="Registry Views"
-            color={COLORS.primary}
-            trend="LIVE"
-          />
-          <StatCard
-            icon={Download}
-            value={analytics.cvDownloads}
-            label="CV Pulls"
-            color={COLORS.secondary}
-          />
-          <StatCard
-            icon={Award}
-            value={analytics.certDownloads}
-            label="Credentials"
-            color="#FACC15"
-          />
-        </View>
-
-        <Text style={styles.sectionTitle}>Availability Protocol</Text>
-        <GlassCard style={styles.protocolCard}>
-          <View style={styles.pillRow}>
-            {AVAILABILITY_MODES.map((mode) => (
-              <TouchableOpacity
-                key={mode.value}
-                onPress={() => updateStatus(mode.value)}
-                style={[
-                  styles.statusPill,
-                  currentStatus === mode.value && {
-                    borderColor: mode.color,
-                    backgroundColor: 'rgba(255,255,255,0.03)',
-                  },
-                ]}
-              >
-                <View style={[styles.dot, { backgroundColor: mode.color }]} />
-                <Text
-                  style={[
-                    styles.pillLabel,
-                    currentStatus === mode.value && { color: 'white' },
-                  ]}
-                >
-                  {mode.label}
-                </Text>
-              </TouchableOpacity>
+        {/* ENHANCED ANALYTICS BENTO GRID */}
+        <View
+          style={[styles.bentoGrid, isMobile && { flexDirection: 'column' }]}
+        >
+          <View style={styles.bentoRow}>
+            {[
+              {
+                label: 'Visits',
+                val: analytics.views,
+                icon: Eye,
+                col: COLORS.primary,
+              },
+              {
+                label: 'CV Pulls',
+                val: analytics.cvDownloads,
+                icon: Download,
+                col: COLORS.secondary,
+              },
+            ].map((stat, i) => (
+              <GlassCard key={i} style={styles.statBox}>
+                <stat.icon size={20} color={stat.col} />
+                <View>
+                  <Text style={styles.statValue}>{stat.val}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              </GlassCard>
             ))}
           </View>
+          <GlassCard style={[styles.statBox, isMobile && { minHeight: 80 }]}>
+            <Award size={20} color="#FACC15" />
+            <View>
+              <Text style={styles.statValue}>{analytics.certDownloads}</Text>
+              <Text style={styles.statLabel}>Credentials</Text>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* STATUS PROTOCOL */}
+        <Text style={styles.sectionTitle}>Availability Protocol</Text>
+        <View style={[styles.pillRow, isMobile && { flexWrap: 'wrap' }]}>
+          {AVAILABILITY_MODES.map((mode) => (
+            <TouchableOpacity
+              key={mode.value}
+              onPress={() => updateStatus(mode.value)}
+              style={[
+                styles.statusPill,
+                currentStatus === mode.value && {
+                  borderColor: mode.color,
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                },
+              ]}
+            >
+              <View style={[styles.dot, { backgroundColor: mode.color }]} />
+              <Text
+                style={[
+                  styles.pillLabel,
+                  currentStatus === mode.value && { color: 'white' },
+                ]}
+              >
+                {mode.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* REGISTRY CONFIGURATION */}
+        <Text style={styles.sectionTitle}>Registry Configuration</Text>
+        <GlassCard style={styles.formCard}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Professional Headline</Text>
+            <TextInput
+              style={styles.textInput}
+              value={profile?.headline}
+              onChangeText={(t) =>
+                setProfile((p) => (p ? { ...p, headline: t } : null))
+              }
+              placeholderTextColor="#444"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Hero Subtitle</Text>
+            <TextInput
+              style={[styles.textInput, { height: 60 }]}
+              multiline
+              value={profile?.bio}
+              onChangeText={(t) =>
+                setProfile((p) => (p ? { ...p, bio: t } : null))
+              }
+              placeholderTextColor="#444"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <TrendingUp size={12} color={COLORS.primary} />
+              <Text style={styles.label}>Growth Narrative</Text>
+            </View>
+            <TextInput
+              style={[styles.textInput, { height: 100 }]}
+              multiline
+              value={profile?.growth_summary || ''}
+              onChangeText={(t) =>
+                setProfile((p) => (p ? { ...p, growth_summary: t } : null))
+              }
+              placeholderTextColor="#444"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Detailed Biography</Text>
+            <TextInput
+              style={[styles.textInput, { height: 140 }]}
+              multiline
+              numberOfLines={8}
+              value={profile?.about_me || ''}
+              onChangeText={(t) =>
+                setProfile((p) => (p ? { ...p, about_me: t } : null))
+              }
+              placeholderTextColor="#444"
+            />
+          </View>
+
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            style={styles.saveBtn}
+          >
+            {saving ? (
+              <ActivityIndicator color="black" />
+            ) : (
+              <>
+                <Save size={20} color="black" />
+                <Text style={styles.saveBtnText}>Commit Changes</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </GlassCard>
 
-        <Text style={styles.sectionTitle}>Identity Assets</Text>
+        {/* REFINED ASSET NODES */}
+        <Text style={styles.sectionTitle}>Technical Asset Nodes</Text>
         <View
           style={[
             styles.assetSplit,
@@ -471,8 +515,11 @@ export default function AdminDashboard() {
             >
               {profile?.profile_image_url ? (
                 <Image
+                  key={`${profile.profile_image_url}-${imgRev}`}
                   source={{ uri: profile.profile_image_url }}
                   style={styles.avatarImg}
+                  contentFit="cover"
+                  transition={500}
                 />
               ) : (
                 <View style={styles.avatarPlaceholder}>
@@ -483,22 +530,23 @@ export default function AdminDashboard() {
                 <Camera size={14} color="white" />
               </View>
             </TouchableOpacity>
-            <Text style={styles.assetName}>System Avatar</Text>
+            <Text style={styles.assetNodeLabel}>System Avatar</Text>
           </GlassCard>
+
           <View style={styles.docList}>
             {[
               {
                 type: 'cv',
                 label: 'Technical CV',
                 icon: FileCheck,
-                color: COLORS.primary,
+                col: COLORS.primary,
                 url: profile?.cv_url,
               },
               {
                 type: 'cert',
-                label: 'Credentials',
+                label: 'Certification Bundle',
                 icon: Award,
-                color: '#FACC15',
+                col: '#FACC15',
                 url: profile?.certification_url,
               },
             ].map((doc: any) => (
@@ -509,14 +557,14 @@ export default function AdminDashboard() {
               >
                 <doc.icon
                   size={24}
-                  color={doc.url ? doc.color : COLORS.textDim}
+                  color={doc.url ? doc.col : COLORS.textDim}
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.docTitle}>{doc.label}</Text>
                   <Text style={styles.docStatus}>
                     {doc.url
-                      ? 'Asset live in cloud'
-                      : 'Pending synchronization'}
+                      ? 'Cloud Uplink Verified'
+                      : 'Awaiting Synchronization'}
                   </Text>
                 </View>
                 <ArrowUpRight size={18} color={COLORS.textDim} />
@@ -524,92 +572,6 @@ export default function AdminDashboard() {
             ))}
           </View>
         </View>
-
-        <Text style={styles.sectionTitle}>Profile Configuration</Text>
-        <GlassCard style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Professional Headline</Text>
-            <TextInput
-              style={styles.textInput}
-              value={profile?.headline}
-              onChangeText={(t) =>
-                profile && setProfile({ ...profile, headline: t })
-              }
-              placeholderTextColor="#444"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hero Tagline (Short Summary)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={profile?.bio}
-              onChangeText={(t) =>
-                profile && setProfile({ ...profile, bio: t })
-              }
-              placeholderTextColor="#444"
-            />
-          </View>
-
-          {/* NEW BIOGRAPHY BOX */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              Professional Biography (About Me Section)
-            </Text>
-            <TextInput
-              style={[styles.textInput, styles.textArea]}
-              value={profile?.about_me || ''}
-              onChangeText={(t) =>
-                profile && setProfile({ ...profile, about_me: t })
-              }
-              multiline
-              numberOfLines={6}
-              placeholderTextColor="#444"
-            />
-          </View>
-
-          <View
-            style={[
-              styles.row,
-              { flexDirection: isDesktop ? 'row' : 'column' },
-            ]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>GitHub</Text>
-              <TextInput
-                style={styles.textInput}
-                value={profile?.github_url}
-                onChangeText={(t) =>
-                  profile && setProfile({ ...profile, github_url: t })
-                }
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>LinkedIn</Text>
-              <TextInput
-                style={styles.textInput}
-                value={profile?.linkedin_url}
-                onChangeText={(t) =>
-                  profile && setProfile({ ...profile, linkedin_url: t })
-                }
-              />
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={() => profile && updateProfile(profile)}
-            disabled={saving}
-            style={[styles.saveBtn, saving && { opacity: 0.5 }]}
-          >
-            {saving ? (
-              <ActivityIndicator color="black" />
-            ) : (
-              <>
-                <Save size={20} color="black" />
-                <Text style={styles.saveBtnText}>COMMIT_IDENTITY_SYNC</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </GlassCard>
 
         <View style={{ height: 120 }} />
       </Animated.ScrollView>
@@ -647,63 +609,66 @@ const styles = StyleSheet.create({
     borderBottomColor: '#151515',
   },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  badgeWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(204,255,0,0.05)',
-    justifyContent: 'center',
+  headerTitle: { color: COLORS.text, fontSize: 20, fontWeight: '800' },
+  liveBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(204,255,0,0.1)',
+    gap: 6,
+    marginTop: 2,
   },
-  headerTitle: { color: COLORS.text, fontSize: 22, fontWeight: '800' },
-  headerSubtitle: { color: COLORS.textDim, fontSize: 11, fontWeight: '700' },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ade80',
+  },
+  liveText: {
+    color: '#4ade80',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,50,50,0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255,50,50,0.1)',
-    backgroundColor: 'rgba(255,50,50,0.02)',
   },
-  logoutText: { color: COLORS.error, fontWeight: '900', fontSize: 11 },
-  bentoGrid: { flexDirection: 'row', gap: 12, marginBottom: 40 },
+  logoutText: { color: COLORS.error, fontWeight: '900', fontSize: 10 },
+  bentoGrid: { gap: 12, marginBottom: 32 },
+  bentoRow: { flexDirection: 'row', gap: 12 },
   statBox: {
     flex: 1,
-    padding: 24,
+    padding: 20,
     borderRadius: 28,
-    gap: 8,
+    gap: 12,
     borderWidth: 1,
     borderColor: '#151515',
+    minHeight: 110,
+    justifyContent: 'space-between',
   },
-  statValue: { color: COLORS.text, fontSize: 28, fontWeight: '900' },
-  statLabel: { color: COLORS.textDim, fontSize: 10, fontWeight: '800' },
-  trendLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+  statValue: { color: COLORS.text, fontSize: 22, fontWeight: '900' },
+  statLabel: {
+    color: COLORS.textDim,
+    fontSize: 8,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
-  trendValue: { color: COLORS.primary, fontSize: 9, fontWeight: '900' },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     marginBottom: 16,
     marginLeft: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  protocolCard: {
-    padding: 12,
-    borderRadius: 24,
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#151515',
-  },
-  pillRow: { flexDirection: 'row', gap: 8 },
+  pillRow: { flexDirection: 'row', gap: 8, marginBottom: 32 },
   statusPill: {
     flex: 1,
     flexDirection: 'row',
@@ -714,10 +679,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#151515',
     gap: 10,
+    minWidth: 100,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  pillLabel: { color: COLORS.textDim, fontSize: 11, fontWeight: '700' },
-  assetSplit: { gap: 16, marginBottom: 32 },
+  pillLabel: { color: COLORS.textDim, fontSize: 10, fontWeight: '700' },
+  formCard: {
+    padding: 24,
+    borderRadius: 32,
+    gap: 20,
+    borderWidth: 1,
+    borderColor: '#151515',
+    marginBottom: 32,
+  },
+  inputGroup: { gap: 10 },
+  label: {
+    color: COLORS.textDim,
+    fontSize: 10,
+    fontWeight: '800',
+    marginLeft: 6,
+    textTransform: 'uppercase',
+  },
+  textInput: {
+    backgroundColor: '#080808',
+    padding: 18,
+    borderRadius: 18,
+    color: COLORS.text,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#151515',
+  },
+  saveBtn: {
+    backgroundColor: COLORS.primary,
+    height: 60,
+    borderRadius: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  saveBtnText: { color: 'black', fontWeight: '900', fontSize: 14 },
+  assetSplit: { gap: 16 },
   avatarCard: {
     padding: 32,
     alignItems: 'center',
@@ -726,18 +728,18 @@ const styles = StyleSheet.create({
     borderColor: '#151515',
   },
   avatarWrapper: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     padding: 4,
     borderWidth: 2,
     borderColor: COLORS.primary,
   },
-  avatarImg: { width: '100%', height: '100%', borderRadius: 55 },
+  avatarImg: { width: '100%', height: '100%', borderRadius: 70 },
   avatarPlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 55,
+    borderRadius: 70,
     backgroundColor: '#0d0d0d',
     justifyContent: 'center',
     alignItems: 'center',
@@ -755,11 +757,11 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.background,
   },
-  assetName: {
+  assetNodeLabel: {
     color: COLORS.text,
     fontWeight: '800',
     marginTop: 16,
-    fontSize: 15,
+    fontSize: 14,
   },
   docList: { flex: 1, gap: 12 },
   docItem: {
@@ -772,42 +774,6 @@ const styles = StyleSheet.create({
     borderColor: '#151515',
     gap: 18,
   },
-  docTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
-  docStatus: { color: COLORS.textDim, fontSize: 11, marginTop: 2 },
-  formCard: {
-    padding: 32,
-    borderRadius: 32,
-    gap: 24,
-    borderWidth: 1,
-    borderColor: '#151515',
-  },
-  inputGroup: { gap: 10 },
-  label: {
-    color: COLORS.textDim,
-    fontSize: 11,
-    fontWeight: '800',
-    marginLeft: 6,
-  },
-  textInput: {
-    backgroundColor: '#080808',
-    padding: 18,
-    borderRadius: 18,
-    color: COLORS.text,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#151515',
-  },
-  textArea: { height: 140, textAlignVertical: 'top' },
-  row: { gap: 16 },
-  saveBtn: {
-    backgroundColor: COLORS.primary,
-    height: 60,
-    borderRadius: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 12,
-  },
-  saveBtnText: { color: 'black', fontWeight: '900', fontSize: 14 },
+  docTitle: { color: COLORS.text, fontSize: 14, fontWeight: '700' },
+  docStatus: { color: COLORS.textDim, fontSize: 10, marginTop: 2 },
 });

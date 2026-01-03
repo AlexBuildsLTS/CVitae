@@ -1,3 +1,6 @@
+// 1. IMPORTANT: This must be the first import for NativeWind v4
+import '../global.css';
+
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -14,7 +17,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    // Add custom Swiss-style fonts here (e.g., Inter, Arimo, or Neue Haas)
+    // Custom Swiss-style fonts would be loaded here
   });
 
   useEffect(() => {

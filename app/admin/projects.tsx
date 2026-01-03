@@ -1,16 +1,11 @@
 /* cspell:disable */
 /**
  * @file app/admin/projects.tsx
- * @description Enterprise-grade Project Registry Management System.
- * @version 8.0.0
- * * IMPROVEMENTS:
- * - Refactored into a modular architecture for better maintainability.
- * - Optimized rendering performance using FlatList and memoized components.
- * - Enhanced error handling and input validation.
- * - Centralized logic into a custom useProjects hook.
+ * @description Project Registry Management System.
+ * @version 14.0.0 - Full Restoration with Web-Safe Upload Logic
  */
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,12 +21,12 @@ import {
   UIManager,
   Modal,
   KeyboardAvoidingView,
-  FlatList,
+  ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 /**
  * --- ICONOGRAPHY MODULE ---
@@ -48,6 +43,8 @@ import {
   ArrowUpRight,
   Image as ImageIcon,
   LogOut,
+  Github,
+  ExternalLink,
 } from 'lucide-react-native';
 
 // --- SYSTEM CORE ---
@@ -55,7 +52,6 @@ import { supabase } from '../../lib/supabase';
 import { COLORS, SPACING } from '../../constants/Theme';
 import { GlassCard } from '../../components/GlassCard';
 
-// Enforce layout engine on Android
 if (
   Platform.OS === 'android' &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -63,9 +59,6 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-/**
- * --- DATA MODELS ---
- */
 interface Project {
   id: number;
   title: string;
@@ -94,72 +87,69 @@ const useProjects = () => {
         .from('projects')
         .select('*')
         .order('display_order', { ascending: true });
-
       if (error) throw error;
       setProjects(data || []);
     } catch (e: any) {
       console.error('[REGISTRY_SYNC_FAIL]:', e.message);
-      Alert.alert('Registry Error', 'Failed to synchronize with cloud.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  const handleLogout = async () => {
-    Alert.alert('SYSTEM_EXIT', 'Confirm session termination?', [
-      { text: 'ABORT', style: 'cancel' },
-      {
-        text: 'SIGN_OUT',
-        style: 'destructive',
-        onPress: async () => {
+const handleLogout = async () => {
+  Alert.alert('SYSTEM_EXIT', 'Confirm session termination?', [
+    { text: 'ABORT', style: 'cancel' },
+    {
+      text: 'SIGN_OUT',
+      style: 'destructive',
+      onPress: async () => {
+        try {
           setLoading(true);
-          try {
-            await supabase.auth.signOut();
-            router.replace('/(auth)/login');
-          } catch (e) {
+          // Standard Supabase sign out
+          const { error } = await supabase.auth.signOut();
+          if (error) console.error("Sign out error:", error.message);
+          
+          // Redirect strictly to the homepage (root)
+          router.replace('/'); 
+        } catch (e) {
+          // Hard reset fallback for web browsers to ensure you hit the landing page
+          if (Platform.OS === 'web') {
+            window.location.href = '/'; 
+          } else {
             router.replace('/');
           }
-        },
+        } finally {
+          setLoading(false);
+        }
       },
-    ]);
-  };
+    },
+  ]);
+};
 
   const handleReorder = async (index: number, direction: 'up' | 'down') => {
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= projects.length) return;
-
     setSaving(true);
     const itemA = projects[index];
     const itemB = projects[targetIdx];
-
     try {
-      // Atomic updates for order swap
-      const { error: err1 } = await supabase
+      await supabase
         .from('projects')
         .update({ display_order: itemB.display_order })
         .eq('id', itemA.id);
-      if (err1) throw err1;
-
-      const { error: err2 } = await supabase
+      await supabase
         .from('projects')
         .update({ display_order: itemA.display_order })
         .eq('id', itemB.id);
-      if (err2) throw err2;
-
-      // Optimistic UI update
       const updatedSet = [...projects];
-      const tempOrder = itemA.display_order;
-      itemA.display_order = itemB.display_order;
-      itemB.display_order = tempOrder;
-
-      updatedSet[index] = itemB;
-      updatedSet[targetIdx] = itemA;
-
+      [updatedSet[index], updatedSet[targetIdx]] = [
+        updatedSet[targetIdx],
+        updatedSet[index],
+      ];
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setProjects(updatedSet);
     } catch (e: any) {
-      Alert.alert('Reorder Error', e.message);
       fetchRegistry();
     } finally {
       setSaving(false);
@@ -172,14 +162,13 @@ const useProjects = () => {
       if (error) throw error;
       fetchRegistry();
     } catch (e: any) {
-      Alert.alert('Deletion Error', e.message);
+      Alert.alert('Deletion Error', 'Failed to remove record');
     }
   };
 
   useEffect(() => {
     fetchRegistry();
   }, [fetchRegistry]);
-
   return {
     loading,
     refreshing,
@@ -196,105 +185,93 @@ const useProjects = () => {
 /**
  * --- SUB-COMPONENTS ---
  */
-
-const ProjectCard = React.memo(({ 
-  project, 
-  index, 
-  isFirst, 
-  isLast, 
-  onReorder, 
-  onEdit, 
-  onDelete, 
-  cardWidth 
-}: { 
-  project: Project; 
-  index: number;
-  isFirst: boolean;
-  isLast: boolean;
-  onReorder: (index: number, dir: 'up' | 'down') => void;
-  onEdit: (p: Project) => void;
-  onDelete: (id: number) => void;
-  cardWidth: any;
-}) => (
-  <View style={[styles.gridItem, { width: cardWidth }]}>
-    <GlassCard style={styles.projectCard}>
-      <View style={styles.imageHost}>
-        <Image
-          source={
-            project.image_url
-              ? { uri: project.image_url }
-              : require('../../assets/images/Northm.png')
-          }
-          style={styles.projectImage}
-          contentFit="cover"
-          transition={500}
-          priority="high"
-        />
-        <View style={styles.orderTag}>
-          <Text style={styles.orderLabel}>
-            INDEX_{String(project.display_order).padStart(2, '0')}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.cardContent}>
-        <Text style={styles.projectTitle} numberOfLines={1}>
-          {project.title}
-        </Text>
-        <Text style={styles.projectDesc} numberOfLines={2}>
-          {project.description}
-        </Text>
-
-        <View style={styles.tagStrip}>
-          {project.tags?.slice(0, 3).map((tag, i) => (
-            <View key={i} style={styles.tag}>
-              <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
+const ProjectCard = React.memo(
+  ({
+    project,
+    index,
+    isFirst,
+    isLast,
+    onReorder,
+    onEdit,
+    onDelete,
+    cardWidth,
+  }: any) => (
+    <Animated.View
+      entering={FadeInDown.delay(index * 100)}
+      style={[styles.gridItem, { width: cardWidth }]}
+    >
+      <GlassCard style={styles.projectCard}>
+        <View style={styles.imageHost}>
+          {project.image_url ? (
+            <Image
+              source={{ uri: project.image_url }}
+              style={styles.projectImage}
+              contentFit="cover"
+              transition={500}
+            />
+          ) : (
+            <View style={styles.placeholderBox}>
+              <ImageIcon color="#222" size={32} />
             </View>
-          ))}
-        </View>
-
-        <View style={styles.controlsRow}>
-          <TouchableOpacity
-            onPress={() => onReorder(index, 'up')}
-            disabled={isFirst}
-            style={[styles.utilBtn, isFirst && styles.disabledBtn]}
-          >
-            <ChevronUp size={16} color={isFirst ? '#333' : 'white'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => onReorder(index, 'down')}
-            disabled={isLast}
-            style={[styles.utilBtn, isLast && styles.disabledBtn]}
-          >
-            <ChevronDown size={16} color={isLast ? '#333' : 'white'} />
-          </TouchableOpacity>
-
-          <View style={styles.sep} />
-
-          <TouchableOpacity onPress={() => onEdit(project)} style={styles.utilBtn}>
-            <Edit3 size={16} color={COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() =>
-              Alert.alert('Confirm Deletion', 'Permanent removal of this record?', [
-                { text: 'CANCEL', style: 'cancel' },
-                { text: 'DELETE', style: 'destructive', onPress: () => onDelete(project.id) },
-              ])
-            }
-            style={styles.utilBtn}
-          >
-            <Trash2 size={16} color={COLORS.error} />
-          </TouchableOpacity>
-
-          <View style={{ flex: 1 }} />
-          <View style={styles.externalBtn}>
-            <ArrowUpRight size={14} color="black" />
+          )}
+          <View style={styles.orderTag}>
+            <Text style={styles.orderLabel}>
+              PROJECT {String(project.display_order).padStart(2, '0')}
+            </Text>
           </View>
         </View>
-      </View>
-    </GlassCard>
-  </View>
-));
+        <View style={styles.cardContent}>
+          <Text style={styles.projectTitle} numberOfLines={1}>
+            {project.title}
+          </Text>
+          <Text style={styles.projectDesc} numberOfLines={2}>
+            {project.description}
+          </Text>
+          <View style={styles.tagStrip}>
+            {project.tags?.slice(0, 3).map((tag: string, i: number) => (
+              <View key={i} style={styles.tag}>
+                <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.controlsRow}>
+            <TouchableOpacity
+              onPress={() => onReorder(index, 'up')}
+              disabled={isFirst}
+              style={[styles.utilBtn, isFirst && styles.disabledBtn]}
+            >
+              <ChevronUp size={16} color={isFirst ? '#333' : 'white'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onReorder(index, 'down')}
+              disabled={isLast}
+              style={[styles.utilBtn, isLast && styles.disabledBtn]}
+            >
+              <ChevronDown size={16} color={isLast ? '#333' : 'white'} />
+            </TouchableOpacity>
+            <View style={styles.sep} />
+            <TouchableOpacity
+              onPress={() => onEdit(project)}
+              style={styles.utilBtn}
+            >
+              <Edit3 size={16} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onDelete(project.id)}
+              style={styles.utilBtn}
+            >
+              <Trash2 size={16} color={COLORS.error} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            <View style={styles.externalBtn}>
+              <ArrowUpRight size={14} color="black" />
+            </View>
+          </View>
+        </View>
+      </GlassCard>
+    </Animated.View>
+  )
+);
 
 /**
  * --- MAIN COMPONENT ---
@@ -304,50 +281,51 @@ export default function ProjectsManagement() {
   const {
     loading,
     refreshing,
-    saving,
-    setSaving,
     projects,
     fetchRegistry,
     handleLogout,
     handleReorder,
     deleteProject,
+    saving,
+    setSaving,
   } = useProjects();
 
-  // Layout Engine
   const isDesktop = width > 1024;
   const isTablet = width > 768 && width <= 1024;
-  const isMobile = width <= 768;
+  const cardWidth = useMemo(
+    () => (isDesktop ? '31.5%' : isTablet ? '48%' : '100%'),
+    [isDesktop, isTablet]
+  );
 
-  const cardWidth = useMemo(() => {
-    if (isDesktop) return '31.5%';
-    if (isTablet) return '48%';
-    return '100%';
-  }, [isDesktop, isTablet]);
-
-  // Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
+  const [editingProject, setEditingProject] = useState<Partial<Project> | null>(
+    null
+  );
   const [tempTags, setTempTags] = useState<string>('');
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
 
-  const initiateProjectModal = useCallback((project: Project | null = null) => {
-    if (project) {
-      setEditingProject(project);
-      setTempTags(project.tags ? project.tags.join(', ') : '');
-    } else {
-      setEditingProject({
-        title: '',
-        description: '',
-        github_url: '',
-        live_url: '',
-        tags: [],
-        display_order: projects.length > 0
-          ? Math.max(...projects.map((p) => p.display_order)) + 1
-          : 1,
-      });
-      setTempTags('');
-    }
-    setModalVisible(true);
-  }, [projects]);
+  const initiateProjectModal = useCallback(
+    (project: Project | null = null) => {
+      if (project) {
+        setEditingProject(project);
+        setTempTags(project.tags ? project.tags.join(', ') : '');
+        setLocalPreview(project.image_url);
+      } else {
+        setEditingProject({
+          title: '',
+          description: '',
+          github_url: '',
+          live_url: '',
+          tags: [],
+          display_order: projects.length + 1,
+        });
+        setTempTags('');
+        setLocalPreview(null);
+      }
+      setModalVisible(true);
+    },
+    [projects]
+  );
 
   const handleAssetPipeline = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -355,32 +333,38 @@ export default function ProjectsManagement() {
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.8,
-      base64: true,
+      base64: true, // Restore base64 for your working atob logic
     });
 
     if (!result.canceled && result.assets?.[0]) {
       setSaving(true);
       try {
-        const file = result.assets[0];
-        const fileName = `projects/asset_${Date.now()}.jpg`;
+        const asset = result.assets[0];
+        setLocalPreview(asset.uri);
 
-        const raw = atob(file.base64!);
+        const fileName = `public/projects/asset_${Date.now()}.jpg`;
+
+        // Restoration of your "Perfect" Version 8.0.0 logic
+        const raw = atob(asset.base64!);
         const uint8 = new Uint8Array(raw.length);
         for (let i = 0; i < raw.length; i++) uint8[i] = raw.charCodeAt(i);
 
         const { error: uploadError } = await supabase.storage
           .from('portfolio-images')
-          .upload(fileName, uint8, { contentType: 'image/jpeg', upsert: true });
+          .upload(fileName, uint8, {
+            contentType: 'image/jpeg',
+            upsert: true,
+          });
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('portfolio-images')
-          .getPublicUrl(fileName);
-          
-        setEditingProject((prev) => ({ ...prev, image_url: publicUrl }));
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('portfolio-images').getPublicUrl(fileName);
+
+        setEditingProject((prev) => ({ ...prev!, image_url: publicUrl }));
       } catch (e: any) {
-        Alert.alert('Upload Failure', e.message);
+        Alert.alert('Upload Error', e.message);
       } finally {
         setSaving(false);
       }
@@ -389,27 +373,27 @@ export default function ProjectsManagement() {
 
   const commitProjectToCloud = async () => {
     if (!editingProject?.title || !editingProject?.description) {
-      Alert.alert('Validation Error', 'Title and Description are required.');
+      Alert.alert('Validation Error', 'Fields are mandatory.');
       return;
     }
-
     setSaving(true);
-    const parsedTags = tempTags
+    const tagsArray = tempTags
       .split(',')
       .map((t) => t.trim())
-      .filter((t) => t !== '');
-    const payload = { ...editingProject, tags: parsedTags };
+      .filter(Boolean);
+    const payload = { ...editingProject, tags: tagsArray };
 
     try {
       const { error } = editingProject.id
-        ? await supabase.from('projects').update(payload).eq('id', editingProject.id)
+        ? await supabase
+            .from('projects')
+            .update(payload)
+            .eq('id', editingProject.id)
         : await supabase.from('projects').insert([payload]);
 
       if (error) throw error;
-
       setModalVisible(false);
       fetchRegistry();
-      Alert.alert('Success', 'Registry synchronized.');
     } catch (e: any) {
       Alert.alert('Sync Error', e.message);
     } finally {
@@ -417,20 +401,19 @@ export default function ProjectsManagement() {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingLabel}>SYNCHRONIZING_REGISTRY...</Text>
+        <Text style={styles.loadingLabel}>ACCESSING_REGISTRY...</Text>
       </View>
     );
-  }
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.header, isMobile && styles.headerMobile]}>
+      <View style={[styles.header, width <= 768 && styles.headerMobile]}>
         <View style={styles.headerInfo}>
           <View style={styles.iconContainer}>
             <Layers size={22} color={COLORS.primary} />
@@ -442,38 +425,24 @@ export default function ProjectsManagement() {
             </Text>
           </View>
         </View>
-
-        <View style={[styles.headerActions, isMobile && { width: '100%' }]}>
+        <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={() => initiateProjectModal()}
-            style={[styles.addBtn, isMobile && { flex: 1 }]}
+            style={[styles.addBtn, width <= 768 && { flex: 1 }]}
           >
             <Plus size={18} color="black" />
             <Text style={styles.addBtnText}>New Project</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtnSmall}>
+          <TouchableOpacity
+            onPress={handleLogout}
+            style={styles.logoutBtnSmall}
+          >
             <LogOut size={18} color={COLORS.error} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <FlatList
-        data={projects}
-        renderItem={({ item, index }) => (
-          <ProjectCard
-            project={item}
-            index={index}
-            isFirst={index === 0}
-            isLast={index === projects.length - 1}
-            onReorder={handleReorder}
-            onEdit={initiateProjectModal}
-            onDelete={deleteProject}
-            cardWidth={cardWidth}
-          />
-        )}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={isDesktop ? 3 : isTablet ? 2 : 1}
-        key={isDesktop ? 'd' : isTablet ? 't' : 'm'} // Force re-render on column change
+      <ScrollView
         contentContainerStyle={styles.scrollArea}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -483,8 +452,24 @@ export default function ProjectsManagement() {
             tintColor={COLORS.primary}
           />
         }
-        ListFooterComponent={<View style={{ height: 120 }} />}
-      />
+      >
+        <View style={styles.gridContainer}>
+          {projects.map((item, index) => (
+            <ProjectCard
+              key={item.id}
+              project={item}
+              index={index}
+              isFirst={index === 0}
+              isLast={index === projects.length - 1}
+              onReorder={handleReorder}
+              onEdit={initiateProjectModal}
+              onDelete={deleteProject}
+              cardWidth={cardWidth}
+            />
+          ))}
+        </View>
+        <View style={{ height: 120 }} />
+      </ScrollView>
 
       <Modal visible={modalVisible} animationType="fade" transparent={true}>
         <KeyboardAvoidingView
@@ -494,127 +479,109 @@ export default function ProjectsManagement() {
           <GlassCard style={[styles.modalBox, isDesktop && { width: 680 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {editingProject?.id ? 'UPDATE_RECORD' : 'NEW_RECORD'}
+                {editingProject?.id ? 'UPDATE' : 'NEW'}
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <X size={24} color="white" />
               </TouchableOpacity>
             </View>
 
-            <FlatList
-              data={[1]}
-              keyExtractor={(i) => i.toString()}
-              renderItem={() => (
-                <View>
-                  <TouchableOpacity onPress={handleAssetPipeline} style={styles.imageField}>
-                    {editingProject?.image_url ? (
-                      <Image
-                        source={{ uri: editingProject.image_url }}
-                        style={styles.fullPreview}
-                        contentFit="cover"
-                      />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View>
+                <TouchableOpacity
+                  onPress={handleAssetPipeline}
+                  style={styles.imageField}
+                >
+                  {localPreview ? (
+                    <Image
+                      source={{ uri: localPreview }}
+                      style={styles.fullPreview}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={styles.fieldEmpty}>
+                      <ImageIcon size={32} color={COLORS.textDim} />
+                      <Text style={styles.fieldLabel}>Upload asset (16:9)</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.formArea}>
+                  <TextInput
+                    style={styles.input}
+                    value={editingProject?.title}
+                    onChangeText={(t) =>
+                      setEditingProject({ ...editingProject!, title: t })
+                    }
+                    placeholder="Title"
+                    placeholderTextColor="#444"
+                  />
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={editingProject?.description}
+                    onChangeText={(t) =>
+                      setEditingProject({ ...editingProject!, description: t })
+                    }
+                    multiline
+                    placeholder="Description"
+                    placeholderTextColor="#444"
+                  />
+                  <View style={styles.row}>
+                    <TextInput
+                      style={[styles.input, { flex: 1 }]}
+                      value={String(editingProject?.display_order || '')}
+                      keyboardType="numeric"
+                      onChangeText={(t) =>
+                        setEditingProject({
+                          ...editingProject!,
+                          display_order: parseInt(t) || 0,
+                        })
+                      }
+                    />
+                    <TextInput
+                      style={[styles.input, { flex: 2 }]}
+                      value={tempTags}
+                      onChangeText={setTempTags}
+                      placeholder="Tags (CSV)"
+                      placeholderTextColor="#444"
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={editingProject?.github_url || ''}
+                    onChangeText={(t) =>
+                      setEditingProject({ ...editingProject!, github_url: t })
+                    }
+                    placeholder="GitHub URL"
+                    placeholderTextColor="#444"
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={editingProject?.live_url || ''}
+                    onChangeText={(t) =>
+                      setEditingProject({ ...editingProject!, live_url: t })
+                    }
+                    placeholder="Live URL"
+                    placeholderTextColor="#444"
+                  />
+
+                  <TouchableOpacity
+                    onPress={commitProjectToCloud}
+                    disabled={saving}
+                    style={[styles.commitBtn, saving && { opacity: 0.5 }]}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="black" />
                     ) : (
-                      <View style={styles.fieldEmpty}>
-                        <ImageIcon size={32} color={COLORS.textDim} />
-                        <Text style={styles.fieldLabel}>Upload Production Asset (16:9)</Text>
-                      </View>
+                      <>
+                        <Save size={20} color="black" />
+                        <Text style={styles.commitText}>SAVE_CHANGES</Text>
+                      </>
                     )}
                   </TouchableOpacity>
-
-                  <View style={styles.formArea}>
-                    <View style={styles.fieldGroup}>
-                      <Text style={styles.label}>Registry Title</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingProject?.title}
-                        onChangeText={(t) => setEditingProject({ ...editingProject, title: t })}
-                        placeholder="Enter project title"
-                        placeholderTextColor="#444"
-                      />
-                    </View>
-
-                    <View style={styles.fieldGroup}>
-                      <Text style={styles.label}>Technical Description</Text>
-                      <TextInput
-                        style={[styles.input, styles.textArea]}
-                        value={editingProject?.description}
-                        onChangeText={(t) => setEditingProject({ ...editingProject, description: t })}
-                        multiline
-                        numberOfLines={4}
-                        placeholder="Detailed technical breakdown"
-                        placeholderTextColor="#444"
-                      />
-                    </View>
-
-                    <View style={styles.row}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.label}>Sort Index</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={String(editingProject?.display_order || '')}
-                          keyboardType="numeric"
-                          onChangeText={(t) =>
-                            setEditingProject({
-                              ...editingProject,
-                              display_order: parseInt(t) || 0,
-                            })
-                          }
-                        />
-                      </View>
-                      <View style={{ flex: 2 }}>
-                        <Text style={styles.label}>Stack Tags</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={tempTags}
-                          onChangeText={setTempTags}
-                          placeholder="React, Node, Java"
-                          placeholderTextColor="#444"
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.fieldGroup}>
-                      <Text style={styles.label}>Source Code URL (GitHub)</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingProject?.github_url || ''}
-                        onChangeText={(t) => setEditingProject({ ...editingProject, github_url: t })}
-                        autoCapitalize="none"
-                        placeholder="https://github.com/..."
-                        placeholderTextColor="#444"
-                      />
-                    </View>
-
-                    <View style={styles.fieldGroup}>
-                      <Text style={styles.label}>Live Deployment URL</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingProject?.live_url || ''}
-                        onChangeText={(t) => setEditingProject({ ...editingProject, live_url: t })}
-                        autoCapitalize="none"
-                        placeholder="https://project.com"
-                        placeholderTextColor="#444"
-                      />
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={commitProjectToCloud}
-                      disabled={saving}
-                      style={[styles.commitBtn, saving && { opacity: 0.5 }]}
-                    >
-                      {saving ? (
-                        <ActivityIndicator color="black" />
-                      ) : (
-                        <>
-                          <Save size={20} color="black" />
-                          <Text style={styles.commitText}>COMMIT_CHANGES</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
                 </View>
-              )}
-            />
+              </View>
+            </ScrollView>
           </GlassCard>
         </KeyboardAvoidingView>
       </Modal>
@@ -638,12 +605,13 @@ const styles = StyleSheet.create({
     color: COLORS.textDim,
     marginTop: SPACING.m,
     fontSize: 12,
-    letterSpacing: 2,
     fontWeight: 'bold',
   },
-  scrollArea: { 
-    padding: SPACING.l,
-    paddingBottom: 40,
+  scrollArea: { padding: SPACING.l },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
   },
   header: {
     flexDirection: 'row',
@@ -666,18 +634,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(204,255,0,0.1)',
   },
-  title: {
-    color: COLORS.text,
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    color: COLORS.textDim,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
+  title: { color: COLORS.text, fontSize: 24, fontWeight: '800' },
+  subtitle: { color: COLORS.textDim, fontSize: 10, fontWeight: '700' },
   headerActions: { flexDirection: 'row', gap: 12 },
   addBtn: {
     flexDirection: 'row',
@@ -699,9 +657,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gridItem: { 
-    padding: 8,
-  },
+  gridItem: { padding: 8 },
   projectCard: {
     padding: 0,
     borderRadius: 24,
@@ -709,8 +665,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#151515',
   },
-  imageHost: { width: '100%', height: 180, backgroundColor: '#0d0d0d' },
+  imageHost: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#0d0d0d',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   projectImage: { width: '100%', height: '100%' },
+  placeholderBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   orderTag: {
     position: 'absolute',
     top: 12,
@@ -722,12 +685,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#222',
   },
-  orderLabel: {
-    color: COLORS.primary,
-    fontSize: 9,
-    fontWeight: '900',
-    fontFamily: Platform.OS === 'web' ? 'monospace' : 'System',
-  },
+  orderLabel: { color: COLORS.primary, fontSize: 9, fontWeight: '900' },
   cardContent: { padding: 22 },
   projectTitle: {
     color: COLORS.text,
@@ -774,9 +732,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1a1a1a',
   },
-  disabledBtn: {
-    opacity: 0.3,
-  },
+  disabledBtn: { opacity: 0.3 },
   sep: { width: 1, height: 20, backgroundColor: '#222', marginHorizontal: 4 },
   externalBtn: {
     width: 38,
@@ -807,12 +763,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
-  modalTitle: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
+  modalTitle: { color: COLORS.text, fontSize: 20, fontWeight: '900' },
   imageField: {
     width: '100%',
     height: 180,
@@ -823,6 +774,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     overflow: 'hidden',
     marginBottom: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   fullPreview: { width: '100%', height: '100%' },
   fieldEmpty: {
@@ -833,14 +786,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: { color: COLORS.textDim, fontSize: 12, fontWeight: '700' },
   formArea: { gap: 20 },
-  fieldGroup: { gap: 10 },
   row: { flexDirection: 'row', gap: 14 },
-  label: {
-    color: COLORS.textDim,
-    fontSize: 11,
-    fontWeight: '800',
-    marginLeft: 8,
-  },
   input: {
     backgroundColor: '#0d0d0d',
     padding: 18,
