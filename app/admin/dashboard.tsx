@@ -2,10 +2,12 @@
 /**
  * @file app/admin/dashboard.tsx
  * @description Refined Master Administrative Control Unit.
- * VERSION: 10.0.0 (Enhanced Layout)
+ * VERSION: 11.0.0 (Senior UI Refinement)
  * UPGRADES:
- * - Responsive Bento Analytics Grid (Mobile optimized).
- * - FIXED: Path compliance for all uploads (public/admin/).
+ * - Optimized Bento Grid (Mobile-First responsive).
+ * - High-density Registry Form layout.
+ * - Enhanced Availability Protocol visuals.
+ * - STRICT preservation of resume/cert logic.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -107,7 +109,7 @@ const LivePulse = () => {
   return (
     <View style={styles.liveBadge}>
       <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
-      <Text style={styles.liveText}>Live</Text>
+      <Text style={styles.liveText}>REALTIME_NODE_ACTIVE</Text>
     </View>
   );
 };
@@ -246,7 +248,10 @@ export default function AdminDashboard() {
     }
   };
 
-  // RESTRICTED: Asset Upload Logic (Not touching Resume/Cert core functionality)
+  /**
+   * --- ASSET UPLOAD PIPELINE ---
+   * STRICTLY PROTECTING working resume/cert logic while maintaining path safety.
+   */
   const handleAssetUpload = async (type: 'avatar' | 'cv' | 'cert') => {
     if (!profile) return;
     setSaving(true);
@@ -273,7 +278,7 @@ export default function AdminDashboard() {
             ? 'cv_url'
             : 'certification_url';
 
-        // MAINTAINED: Path compliance (public/) to satisfy RLS policy
+        // FIXED PATH: Prepended 'public/' to comply with RLS policy folder security
         const path = `public/admin/${field}_${Date.now()}.${
           type === 'avatar' ? 'jpg' : 'pdf'
         }`;
@@ -359,11 +364,9 @@ export default function AdminDashboard() {
         }
         style={{ opacity: fadeAnim }}
       >
-        {/* ENHANCED ANALYTICS BENTO GRID */}
-        <View
-          style={[styles.bentoGrid, isMobile && { flexDirection: 'column' }]}
-        >
-          <View style={styles.bentoRow}>
+        {/* ENHANCED BENTO ANALYTICS */}
+        <View style={styles.bentoGrid}>
+          <View style={styles.bentoTopRow}>
             {[
               {
                 label: 'Visits',
@@ -387,18 +390,18 @@ export default function AdminDashboard() {
               </GlassCard>
             ))}
           </View>
-          <GlassCard style={[styles.statBox, isMobile && { minHeight: 80 }]}>
-            <Award size={20} color="#FACC15" />
-            <View>
-              <Text style={styles.statValue}>{analytics.certDownloads}</Text>
-              <Text style={styles.statLabel}>Credentials</Text>
+          <GlassCard style={styles.fullWidthStat}>
+            <View style={styles.fullWidthStatLeft}>
+              <Award size={24} color="#FACC15" />
+              <Text style={styles.fullWidthLabel}>Technical Credentials</Text>
             </View>
+            <Text style={styles.fullWidthValue}>{analytics.certDownloads}</Text>
           </GlassCard>
         </View>
 
         {/* STATUS PROTOCOL */}
         <Text style={styles.sectionTitle}>Availability Protocol</Text>
-        <View style={[styles.pillRow, isMobile && { flexWrap: 'wrap' }]}>
+        <View style={styles.pillRow}>
           {AVAILABILITY_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.value}
@@ -428,7 +431,7 @@ export default function AdminDashboard() {
         <Text style={styles.sectionTitle}>Registry Configuration</Text>
         <GlassCard style={styles.formCard}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Professional Headline</Text>
+            <Text style={styles.label}>Headline</Text>
             <TextInput
               style={styles.textInput}
               value={profile?.headline}
@@ -440,9 +443,9 @@ export default function AdminDashboard() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hero Subtitle</Text>
+            <Text style={styles.label}>Hero Tagline</Text>
             <TextInput
-              style={[styles.textInput, { height: 60 }]}
+              style={[styles.textInput, { minHeight: 70 }]}
               multiline
               value={profile?.bio}
               onChangeText={(t) =>
@@ -453,14 +456,12 @@ export default function AdminDashboard() {
           </View>
 
           <View style={styles.inputGroup}>
-            <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
+            <View style={styles.labelRow}>
               <TrendingUp size={12} color={COLORS.primary} />
-              <Text style={styles.label}>Growth Narrative</Text>
+              <Text style={styles.label}>Velocity Summary</Text>
             </View>
             <TextInput
-              style={[styles.textInput, { height: 100 }]}
+              style={[styles.textInput, { minHeight: 120 }]}
               multiline
               value={profile?.growth_summary || ''}
               onChangeText={(t) =>
@@ -471,11 +472,11 @@ export default function AdminDashboard() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Detailed Biography</Text>
+            <Text style={styles.label}>Technical Bio</Text>
             <TextInput
-              style={[styles.textInput, { height: 140 }]}
+              style={[styles.textInput, { minHeight: 180 }]}
               multiline
-              numberOfLines={8}
+              numberOfLines={10}
               value={profile?.about_me || ''}
               onChangeText={(t) =>
                 setProfile((p) => (p ? { ...p, about_me: t } : null))
@@ -494,7 +495,7 @@ export default function AdminDashboard() {
             ) : (
               <>
                 <Save size={20} color="black" />
-                <Text style={styles.saveBtnText}>Commit Changes</Text>
+                <Text style={styles.saveBtnText}>COMMIT_IDENTITY_SYNC</Text>
               </>
             )}
           </TouchableOpacity>
@@ -641,139 +642,171 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: COLORS.error, fontWeight: '900', fontSize: 10 },
   bentoGrid: { gap: 12, marginBottom: 32 },
-  bentoRow: { flexDirection: 'row', gap: 12 },
+  bentoTopRow: { flexDirection: 'row', gap: 12 },
   statBox: {
     flex: 1,
-    padding: 20,
-    borderRadius: 28,
-    gap: 12,
+    padding: 24,
+    borderRadius: 32,
+    gap: 16,
     borderWidth: 1,
-    borderColor: '#151515',
-    minHeight: 110,
+    borderColor: '#1a1a1a',
+    minHeight: 120,
     justifyContent: 'space-between',
   },
-  statValue: { color: COLORS.text, fontSize: 22, fontWeight: '900' },
-  statLabel: {
+  fullWidthStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 24,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+  },
+  fullWidthStatLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  fullWidthLabel: {
     color: COLORS.textDim,
-    fontSize: 8,
+    fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  fullWidthValue: { color: COLORS.text, fontSize: 24, fontWeight: '900' },
+  statValue: { color: COLORS.text, fontSize: 26, fontWeight: '900' },
+  statLabel: {
+    color: COLORS.textDim,
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   sectionTitle: {
     color: COLORS.text,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 16,
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 20,
     marginLeft: 4,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    opacity: 0.9,
   },
-  pillRow: { flexDirection: 'row', gap: 8, marginBottom: 32 },
+  pillRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 36,
+    flexWrap: 'wrap',
+  },
   statusPill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#151515',
-    gap: 10,
-    minWidth: 100,
+    gap: 12,
+    minWidth: 110,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  pillLabel: { color: COLORS.textDim, fontSize: 10, fontWeight: '700' },
+  pillLabel: { color: COLORS.textDim, fontSize: 10, fontWeight: '800' },
   formCard: {
-    padding: 24,
-    borderRadius: 32,
-    gap: 20,
+    padding: 28,
+    borderRadius: 40,
+    gap: 24,
     borderWidth: 1,
     borderColor: '#151515',
-    marginBottom: 32,
+    marginBottom: 40,
   },
-  inputGroup: { gap: 10 },
+  inputGroup: { gap: 12 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: {
     color: COLORS.textDim,
     fontSize: 10,
-    fontWeight: '800',
-    marginLeft: 6,
+    fontWeight: '900',
+    marginLeft: 8,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   textInput: {
-    backgroundColor: '#080808',
-    padding: 18,
-    borderRadius: 18,
+    backgroundColor: '#050505',
+    padding: 22,
+    borderRadius: 24,
     color: COLORS.text,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#151515',
+    borderColor: '#121212',
   },
   saveBtn: {
     backgroundColor: COLORS.primary,
-    height: 60,
-    borderRadius: 20,
+    height: 64,
+    borderRadius: 24,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 12,
+    gap: 14,
+    marginTop: 14,
   },
-  saveBtnText: { color: 'black', fontWeight: '900', fontSize: 14 },
+  saveBtnText: { color: 'black', fontWeight: '900', fontSize: 15 },
   assetSplit: { gap: 16 },
   avatarCard: {
-    padding: 32,
+    padding: 40,
     alignItems: 'center',
-    borderRadius: 32,
+    borderRadius: 40,
     borderWidth: 1,
     borderColor: '#151515',
   },
   avatarWrapper: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    padding: 4,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    padding: 6,
     borderWidth: 2,
     borderColor: COLORS.primary,
   },
-  avatarImg: { width: '100%', height: '100%', borderRadius: 70 },
+  avatarImg: { width: '100%', height: '100%', borderRadius: 75 },
   avatarPlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 70,
-    backgroundColor: '#0d0d0d',
+    borderRadius: 75,
+    backgroundColor: '#080808',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarBadge: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: 4,
+    right: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: COLORS.background,
   },
   assetNodeLabel: {
     color: COLORS.text,
-    fontWeight: '800',
-    marginTop: 16,
-    fontSize: 14,
+    fontWeight: '900',
+    marginTop: 20,
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   docList: { flex: 1, gap: 12 },
   docItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#080808',
-    padding: 20,
-    borderRadius: 24,
+    backgroundColor: '#070707',
+    padding: 24,
+    borderRadius: 32,
     borderWidth: 1,
     borderColor: '#151515',
-    gap: 18,
+    gap: 20,
   },
-  docTitle: { color: COLORS.text, fontSize: 14, fontWeight: '700' },
-  docStatus: { color: COLORS.textDim, fontSize: 10, marginTop: 2 },
+  docTitle: { color: COLORS.text, fontSize: 15, fontWeight: '800' },
+  docStatus: {
+    color: COLORS.textDim,
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: '600',
+  },
 });
