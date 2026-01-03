@@ -4,12 +4,20 @@ import { BlurView } from 'expo-blur';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { COLORS, SPACING } from '../constants/Theme';
 
+// Explicitly add children to the interface for React 19 compatibility
 interface GlassCardProps extends ViewProps {
+  children?: React.ReactNode;
   delay?: number;
   intensity?: number;
 }
 
-export function GlassCard({ children, style, delay = 0, intensity = 20, ...props }: GlassCardProps) {
+export function GlassCard({
+  children,
+  style,
+  delay = 0,
+  intensity = 20,
+  ...props
+}: GlassCardProps) {
   // Web compatibility: BlurView behaves differently on web vs native
   const Container = Platform.OS === 'web' ? View : BlurView;
 
@@ -24,10 +32,7 @@ export function GlassCard({ children, style, delay = 0, intensity = 20, ...props
         style={styles.blurContainer}
         {...props}
       >
-        <View style={styles.content}>
-          {children}
-        </View>
-        {/* Noise/Highlight Overlay */}
+        <View style={styles.content}>{children}</View>
         <View style={styles.overlay} pointerEvents="none" />
       </Container>
     </Animated.View>
@@ -38,7 +43,7 @@ const styles = StyleSheet.create({
   animatedContainer: {
     overflow: 'hidden',
     borderRadius: 24,
-    backgroundColor: 'rgba(18, 18, 18, 0.6)', // Fallback/Tint
+    backgroundColor: 'rgba(18, 18, 18, 0.6)',
     borderWidth: 1,
     borderColor: COLORS.border,
   },
