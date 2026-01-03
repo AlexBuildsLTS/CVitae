@@ -1,13 +1,14 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// Explicitly allow Metro to resolve CSS files
 config.resolver.sourceExts.push('css');
 
 module.exports = withNativeWind(config, {
-  input: 'global.css', // Flat string fix for Vercel
+  // path.resolve creates an absolute path: /home/mirage/.../global.css
+  input: path.resolve(__dirname, 'global.css'),
   projectRoot: __dirname,
-  inlineStyles: true, // Ultimate safety net for styles
+  inlineStyles: true,
 });

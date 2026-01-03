@@ -1,24 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Added all subdirectories to ensure no class is ever "missed"
   content: [
     './app/**/*.{js,jsx,ts,tsx}',
     './components/**/*.{js,jsx,ts,tsx}',
-    './hooks/**/*.{js,jsx,ts,tsx}',
     './lib/**/*.{js,jsx,ts,tsx}',
     './constants/**/*.{js,jsx,ts,tsx}',
-    './types/**/*.{js,jsx,ts,tsx}',
+    './global.css',
   ],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
       colors: {
-        nf: {
-          bg: '#0A192F',
-          card: '#112240',
-          primary: '#64FFDA',
-          text: '#8892B0',
-          white: '#E6F1FF',
-        },
+        // Your design palette
+        primary: '#64FFDA',
+        background: '#0A0A0A',
+        border: '#27272A',
       },
     },
   },

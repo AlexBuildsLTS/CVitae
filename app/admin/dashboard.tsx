@@ -509,7 +509,7 @@ export default function AdminDashboard() {
             { flexDirection: isDesktop ? 'row' : 'column' },
           ]}
         >
-          <GlassCard style={[styles.avatarCard, isDesktop && { width: 340 }]}>
+          <GlassCard style={StyleSheet.flatten([styles.avatarCard, isDesktop && { width: 340 }])}>
             <TouchableOpacity
               onPress={() => handleAssetUpload('avatar')}
               style={styles.avatarWrapper}
