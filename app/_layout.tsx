@@ -1,11 +1,11 @@
-import '../global.css';
-
-import { Stack } from 'expo-router';
+import { Stack } from 'expo-router/stack';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+// @ts-ignore
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { COLORS } from '../constants/Theme';
 
 /**

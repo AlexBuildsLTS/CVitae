@@ -2,16 +2,8 @@
  * @file components/PhilosophyBento.tsx
  * @description Senior-Tier Bento Grid. Symmetrical 2x2 layout with professional icon scaling.
  */
-import React from 'react';
 import { View, Text, Platform } from 'react-native';
-import {
-  Shield,
-  Layout,
-  Server,
-  TrendingUp,
-  Users,
-  Code2,
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Theme';
 
 interface PhilosophyProps {
@@ -25,9 +17,9 @@ interface PhilosophyProps {
 
 const PhilosophyBento = ({ profile }: PhilosophyProps) => {
   return (
-    <View className="w-full py-12">
+    <View className="w-full py-8 md:py-12">
       {/* SECTION HEADER */}
-      <View className="px-2 mb-12">
+      <View className="px-4 mb-8 md:px-2 md:mb-12">
         <Text className="text-zinc-500 text-xs font-black tracking-[0.3em] uppercase mb-4">
           TECHNICAL FOUNDATION
         </Text>
@@ -47,9 +39,9 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
       <View className="flex-row flex-wrap mb-6 -m-3">
         {/* Biography Card */}
         <View className="w-full p-3 lg:w-1/2">
-          <View className="bg-zinc-900/40 border border-zinc-800 p-12 rounded-[3rem] min-h-[380px] justify-between shadow-2xl">
+          <View className="bg-zinc-900/40 border border-zinc-800 p-6 md:p-12 rounded-[3rem] min-h-[300px] md:min-h-[380px] justify-between shadow-2xl">
             <View className="self-start p-3 border bg-teal-500/10 rounded-xl border-teal-500/20">
-              <Users size={20} color={COLORS.primary} strokeWidth={2} />
+              <Ionicons name="person" size={20} color={COLORS.primary} />
             </View>
             <View className="mt-10">
               <Text className="mb-5 text-3xl font-bold tracking-tight text-zinc-100">
@@ -65,9 +57,9 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
 
         {/* Growth Card */}
         <View className="w-full p-3 lg:w-1/2">
-          <View className="bg-zinc-900/40 border border-zinc-800 p-12 rounded-[3rem] min-h-[380px] justify-between shadow-2xl">
+          <View className="bg-zinc-900/40 border border-zinc-800 p-6 md:p-12 rounded-[3rem] min-h-[300px] md:min-h-[380px] justify-between shadow-2xl">
             <View className="self-start p-3 border bg-teal-500/10 rounded-xl border-teal-500/20">
-              <TrendingUp size={20} color={COLORS.primary} strokeWidth={2} />
+              <Ionicons name="trending-up" size={20} color={COLORS.primary} />
             </View>
             <View className="mt-10">
               <Text className="mb-5 text-3xl font-bold tracking-tight text-zinc-100">
@@ -85,8 +77,8 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
       {/* ROW 2: 4 SYMMETRICAL PILLARS */}
       <View className="flex-row flex-wrap -m-2">
         <View className="w-full p-2 md:w-1/2 lg:w-1/4">
-          <View className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-[2rem] min-h-[220px] justify-between">
-            <Server size={20} color={COLORS.secondary} strokeWidth={2} />
+          <View className="bg-zinc-900/40 border border-zinc-800 p-4 md:p-8 rounded-[2rem] min-h-[180px] md:min-h-[220px] justify-between">
+            <Ionicons name="server" size={20} color={COLORS.secondary} />
             <View>
               <Text className="mb-1 text-lg font-bold tracking-tighter uppercase text-zinc-100">
                 Backend
@@ -99,8 +91,8 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
         </View>
 
         <View className="w-full p-2 md:w-1/2 lg:w-1/4">
-          <View className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-[2rem] min-h-[220px] justify-between">
-            <Layout size={20} color={COLORS.primary} strokeWidth={2} />
+          <View className="bg-zinc-900/40 border border-zinc-800 p-4 md:p-8 rounded-[2rem] min-h-[180px] md:min-h-[220px] justify-between">
+            <Ionicons name="layers" size={20} color={COLORS.primary} />
             <View>
               <Text className="mb-1 text-lg font-bold tracking-tighter uppercase text-zinc-100">
                 Frontend
@@ -113,8 +105,8 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
         </View>
 
         <View className="w-full p-2 md:w-1/2 lg:w-1/4">
-          <View className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-[2rem] min-h-[220px] justify-between">
-            <Shield size={20} color="#f87171" strokeWidth={2} />
+          <View className="bg-zinc-900/40 border border-zinc-800 p-4 md:p-8 rounded-[2rem] min-h-[180px] md:min-h-[220px] justify-between">
+            <Ionicons name="shield-checkmark" size={20} color="#f87171" />
             <View>
               <Text className="mb-1 text-lg font-bold tracking-tighter uppercase text-zinc-100">
                 Security
@@ -127,8 +119,8 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
         </View>
 
         <View className="w-full p-2 md:w-1/2 lg:w-1/4">
-          <View className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-[2rem] min-h-[220px] justify-between">
-            <Code2 size={20} color="#fbbf24" strokeWidth={2} />
+          <View className="bg-zinc-900/40 border border-zinc-800 p-4 md:p-8 rounded-[2rem] min-h-[180px] md:min-h-[220px] justify-between">
+            <Ionicons name="code-slash" size={20} color="#fbbf24" />
             <View>
               <Text className="mb-1 text-lg font-bold tracking-tighter uppercase text-zinc-100">
                 Infrastructure

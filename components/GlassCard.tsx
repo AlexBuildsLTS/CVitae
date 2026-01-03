@@ -1,12 +1,12 @@
-import React from 'react';
-import { StyleSheet, View, Platform, ViewProps } from 'react-native';
+import * as React from 'react';
+import { StyleSheet, View, Platform, ViewProps, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { COLORS, SPACING } from '../constants/Theme';
 
-// Explicitly add children to the interface for React 19 compatibility
 interface GlassCardProps extends ViewProps {
   children?: React.ReactNode;
+  style?: ViewStyle;
   delay?: number;
   intensity?: number;
 }
@@ -28,11 +28,12 @@ export function GlassCard({
     >
       <Container
         intensity={intensity}
-        tint="dark"
+        tint="light"
         style={styles.blurContainer}
         {...props}
       >
         <View style={styles.content}>{children}</View>
+        {/* Noise/Highlight Overlay */}
         <View style={styles.overlay} pointerEvents="none" />
       </Container>
     </Animated.View>
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
   animatedContainer: {
     overflow: 'hidden',
     borderRadius: 24,
-    backgroundColor: 'rgba(18, 18, 18, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Fallback/Tint
     borderWidth: 1,
     borderColor: COLORS.border,
   },
