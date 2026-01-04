@@ -1,30 +1,63 @@
-# PortfolioOS
+# PortfolioOS | Senior Engineering Architecture
 
-A high-performance, cinematic personal portfolio built with React Native (Expo), TypeScript, and Supabase.
+A high-performance, cinematic developer portfolio architected with **React Native (Expo)**, **TypeScript**, and **Supabase**. This project serves as a technical demonstration of cross-platform engineering, featuring a "Neo-Brutalism meets Swiss Design" aesthetic, 60fps micro-interactions, and a real-time administrative backbone.
 
-## 🌟 Key Features
+---
 
-- **Glassmorphism UI:** Custom built `GlassCard` components using `expo-blur`.
-- **Responsive Layout:** Automatically switches between Desktop (2-column grid, side-by-side layouts) and Mobile (stacked vertical layouts).
-- **Admin Dashboard:** A secured CMS to manage your Projects, Messages, and Profile Status.
-- **Real-time Status:** Updates "Open to Work" status instantly across all visitors via Supabase Realtime.
-- **Secure:** Row Level Security (RLS) on all database tables.
+## 🛠 Technical Stack
+
+### Core Architecture
+
+- **Framework:** Expo SDK 53+ (React Native for Web)
+- **Navigation:** Expo Router v4 (Type-safe, file-based routing)
+- **Language:** TypeScript (Strict Mode)
+- **Backend:** Supabase (Postgres, Auth, Realtime RLS)
+
+### UI/UX & Motion
+
+- **Styling:** NativeWind v4 (Tailwind CSS engine)
+- **Animations:** React Native Reanimated 3 (Worklet-based 60fps motion)
+- **Components:** Custom Glassmorphism system via `expo-blur`
+- **Typography:** Typography-driven hierarchy with Swiss Design principles
+- **Icons:** Lucide React Native
+- **Performance:** `expo-image` with blurhash pre-loading & optimization
+
+---
+
+## 🏛 Key Architectural Features
+
+### 1. Bento-Grid Layout System
+
+Utilizes a modular grid system optimized for information density and visual hierarchy. The layout is fully responsive, transitioning from a complex 2-column desktop grid to a high-legibility vertical stack on mobile devices.
+
+### 2. Real-time Status Synchronization
+
+Leverages Supabase Realtime to broadcast "Open to Work" status and live availability across all active client sessions without page refreshes.
+
+### 3. Glassmorphism UI Engine
+
+A bespoke `GlassCard` component architecture that utilizes platform-specific blurring (`expo-blur`) to maintain high performance while achieving a premium, frosted-glass aesthetic.
+
+### 4. Secure Administrative CMS
+
+A restricted `/admin` directory protected by Supabase Auth and Row Level Security (RLS), allowing for dynamic project management, message triaging, and real-time dashboard updates.
+
+---
 
 ## 📂 Project Structure
 
-´´´
-/src
-  /app
-    /(auth)/login.tsx       # Admin Login (Restricted width)
-    /admin/projects.tsx     # Manage Portfolio items (Edit/Delete)
-    /index.tsx              # MAIN PORTFOLIO (The public face)
-    /_layout.tsx            # 
-  /components
-    GlassCard.tsx           # The core visual container
-    GlassScheduler.tsx      # Meeting booking widget
-    LiveStatus.tsx          # Realtime dot indicator
-  /lib
-    supabase.ts             # Database connection
-  /constants
-    Theme.ts                # Colors (Neon/Dark)
-    ´´´
+```text
+├── app/                  # Expo Router (File-based routing)
+│   ├── (auth)/           # Admin authentication flow
+│   ├── admin/            # Protected CMS Dashboard & Management
+│   └── index.tsx         # Main Portfolio Entry (Public)
+├── components/           # Atomic Design System
+│   ├── GlassCard.tsx     # Core visual container
+│   ├── LiveStatus.tsx    # Supabase Realtime indicator
+│   └── PhilosophyBento.ts# Modular project showcase
+├── lib/                  # Infrastructure & Third-party configs
+│   └── supabase.ts       # Database client & RLS configuration
+├── constants/            # Design System (Colors, Spacing, Theme)
+├── hooks/                # Custom React Hooks (useFrameworkReady)
+└── types/                # Centralized TypeScript Definitions
+```
