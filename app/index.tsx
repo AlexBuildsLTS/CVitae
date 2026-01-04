@@ -49,6 +49,7 @@ import {
   Cpu,
   Database,
   User,
+  Briefcase,
 } from 'lucide-react-native';
 
 // --- CUSTOM MODULES ---
@@ -480,11 +481,56 @@ export default function PortfolioHome() {
           </View>
         </View>
 
-        <View style={styles.spacer} />
+<View style={styles.spacer} />
         <PhilosophyBento profile={profile} />
 
         <View style={styles.spacer} />
-        <Text style={styles.sectionTitle}>Portfolio Registry</Text>
+        
+        {/* --- PORTFOLIO HEADER (MATCHES TECH FOUNDATION STYLE) --- */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.l, gap: 12 }}>
+          {/* Icon Box: Briefcase with lime-green tint */}
+          <View style={{ 
+            backgroundColor: '#a3e63510', 
+            borderWidth: 1, 
+            borderColor: '#a3e63520', 
+            padding: 10, 
+            borderRadius: 12 
+          }}>
+            <Briefcase size={16} color="#a3e635" />
+          </View>
+
+          {/* Styled Badge Pill */}
+          <View style={{ 
+            backgroundColor: 'rgba(0,0,0,0.5)', 
+            borderWidth: 1, 
+            borderColor: '#18181b', 
+            paddingHorizontal: 14, 
+            paddingVertical: 8, 
+            borderRadius: 10,
+            flexDirection: 'row', 
+            alignItems: 'center' 
+          }}>
+            {/* Pulsing Dot Effect */}
+            <View style={{ 
+              width: 6, 
+              height: 6, 
+              borderRadius: 3, 
+              backgroundColor: '#a3e635', 
+              marginRight: 10 
+            }} />
+            <Text style={{ 
+              color: '#a3e635', 
+              fontSize: 10, 
+              fontWeight: '900', 
+              letterSpacing: 3, 
+              textTransform: 'uppercase' 
+            }}>
+              Portfolio
+            </Text>
+          </View>
+        </View>
+
+        {/* PROJECTS CONTAINER */}
         <View style={styles.projectsContainer}>
           {projects.map((project) => (
             <ProjectCard

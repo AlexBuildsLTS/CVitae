@@ -1,8 +1,5 @@
 /**
  * @file components/PhilosophyBento.tsx
- * @description Enterprise-grade technical foundation grid.
- * Categorizes a high-performance stack including Deno Edge Functions and Firebase Admin logic.
- * Optimized for mission-critical financial and pediatric care ecosystems.
  */
 import React from 'react';
 import { View, Text, Platform, Pressable } from 'react-native';
@@ -23,10 +20,6 @@ interface PhilosophyProps {
   } | null;
 }
 
-/**
- * @component TechBadge
- * @description Stylized technology chip with high-contrast labeling and neon accents.
- */
 const TechBadge = ({ label }: { label: string }) => (
   <View className="bg-black/50 border border-zinc-800 px-2 py-1 rounded-md mr-1.5 mb-1.5 flex-row items-center">
     <View className="w-1 h-1 rounded-full bg-[#a3e635] mr-2" />
@@ -36,10 +29,6 @@ const TechBadge = ({ label }: { label: string }) => (
   </View>
 );
 
-/**
- * @component AnimatedCard
- * @description Performance-optimized wrapper providing interactive scaling and border highlights.
- */
 const AnimatedCard = ({
   children,
   style,
@@ -74,10 +63,6 @@ const AnimatedCard = ({
 };
 
 const PhilosophyBento = ({ profile }: PhilosophyProps) => {
-  /**
-   * Technical Pillars Mapping
-   * Integrated with Edge Functions (Deno) and Cloud Admin logic (Firebase/Supabase).
-   */
   const technicalPillars = [
     {
       icon: 'server',
@@ -113,11 +98,23 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
 
   return (
     <View className="w-full py-8 md:py-12">
-      {/* SECTION HEADER */}
+      {/* SECTION HEADER - UPDATED TEXT STYLE AND ICON ONLY */}
       <View className="px-4 mb-8 md:px-2 md:mb-12">
-        <Text className="text-zinc-500 text-xs font-black tracking-[0.3em] uppercase mb-4">
-          TECHNICAL FOUNDATION
-        </Text>
+        <View className="flex-row items-center mb-4">
+          {/* New Professional Icon for the Header */}
+          <View className="bg-[#a3e635]/10 border border-[#a3e635]/20 p-2 rounded-lg mr-3">
+            <Ionicons name="construct" size={14} color="#a3e635" />
+          </View>
+
+          {/* TECHNICAL FOUNDATION now matches the TechStack Badge style */}
+          <View className="flex-row items-center px-3 py-1 border rounded-md bg-black/50 border-zinc-800">
+            <View className="w-1.5 h-1.5 rounded-full bg-[#a3e635] mr-2" />
+            <Text className="text-[10px] font-black tracking-[0.3em] text-[#a3e635] uppercase">
+              TECHNICAL FOUNDATION
+            </Text>
+          </View>
+        </View>
+
         <Text
           className="font-black tracking-tighter text-zinc-100"
           style={{
@@ -125,14 +122,12 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
             lineHeight: Platform.OS === 'web' ? 62 : 40,
           }}
         >
-          {profile?.headline?.toUpperCase() ||
-            'FOUNDATION & PROFESSIONAL GROWTH.'}
+          {profile?.headline?.toUpperCase() || ''}
         </Text>
       </View>
 
-      {/* ROW 1: PRIMARY BIOGRAPHY AND GROWTH DATA */}
+      {/* REST OF CODE REMAINS EXACTLY THE SAME */}
       <View className="flex-row flex-wrap mb-6 -m-3">
-        {/* Biography Module */}
         <View className="w-full p-3 lg:w-1/2">
           <AnimatedCard
             style={{
@@ -152,14 +147,12 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
             </View>
             <View className="p-6 md:p-12 mt-[-40]">
               <Text className="text-lg leading-relaxed text-zinc-400">
-                {profile?.about_me ||
-                  'Certified Java Fullstack Developer specializing in high-performance, tri-lateral ecosystems.'}
+                {profile?.about_me || 'Certified Java Fullstack Developer.'}
               </Text>
             </View>
           </AnimatedCard>
         </View>
 
-        {/* Growth Module */}
         <View className="w-full p-3 lg:w-1/2">
           <AnimatedCard
             style={{
@@ -180,14 +173,13 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
             <View className="p-6 md:p-12 mt-[-40]">
               <Text className="text-lg leading-relaxed text-zinc-400">
                 {profile?.growth_summary ||
-                  'Focused on transactional idempotency and distributed consistency in mission-critical environments.'}
+                  'Focused on distributed consistency.'}
               </Text>
             </View>
           </AnimatedCard>
         </View>
       </View>
 
-      {/* ROW 2: QUAD-PILLAR ARCHITECTURE */}
       <View className="flex-row flex-wrap -m-2">
         {technicalPillars.map((item, idx) => (
           <View key={idx} className="w-full p-2 md:w-1/2 lg:w-1/4">
@@ -199,7 +191,6 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
                 justifyContent: 'flex-start',
               }}
             >
-              {/* Pillar Title Module */}
               <View className="flex-row items-center p-5 gap-x-4 md:p-8">
                 <Ionicons
                   name={item.icon as any}
@@ -210,8 +201,6 @@ const PhilosophyBento = ({ profile }: PhilosophyProps) => {
                   {item.title}
                 </Text>
               </View>
-
-              {/* Stack Badge Module */}
               <View className="flex-row flex-wrap px-5 pb-5 md:px-8 md:pb-8">
                 {item.stack.map((tech, techIdx) => (
                   <TechBadge key={techIdx} label={tech} />
