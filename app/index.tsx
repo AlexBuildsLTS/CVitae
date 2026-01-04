@@ -2,7 +2,7 @@
 /**
  * @file app/index.tsx
  * @description Senior Portfolio Entry Point.
- * Merged Features: Project Registry, Message Channel, Philosophy Bento, & Real-time Analytics.
+ * Merged Features: Project Registry with Multi-Image Gallery, Philosophy Bento, & Real-time Analytics.
  */
 import React, {
   useEffect,
@@ -50,6 +50,8 @@ import {
   Database,
   User,
   Briefcase,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react-native';
 
 // --- CUSTOM MODULES ---
@@ -67,6 +69,7 @@ interface Project {
   title: string;
   description: string;
   image_url: string | null;
+  additional_images?: string[]; // Support for multiple images
   github_url: string | null;
   live_url: string | null;
   tags: string[];
@@ -148,6 +151,7 @@ const Particle = React.memo(function Particle({ delay }: { delay: number }) {
           Animated.timing(opacity, {
             toValue: 0,
             duration: 2000,
+            delay,
             useNativeDriver: true,
           }),
         ]),
@@ -169,72 +173,112 @@ const Particle = React.memo(function Particle({ delay }: { delay: number }) {
   );
 });
 
-const ProjectCard = React.memo(function ProjectCard({ project, isDesktop, isTablet }: any) {
+const ProjectCard = React.memo(function ProjectCard({
+  project,
+  isDesktop,
+  isTablet,
+}: any) {
+  // --- MULTI-IMAGE GALLERY LOGIC ---
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const images = useMemo(() => {
+    return [project.image_url, ...(project.additional_images || [])].filter(
+      Boolean
+    );
+  }, [project.image_url, project.additional_images]);
+
+  const nextImg = () =>
+    setCurrentImgIndex((prev) => (prev + 1) % images.length);
+  const prevImg = () =>
+    setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
+
   return (
-    <View style={[
-      styles.projectWrapper,
-      isDesktop
-        ? { width: '48.5%' }
-        : isTablet
-        ? { width: '48%' }
-        : { width: '100%' },
-    ]}
-  >
-    <GlassCard style={styles.projectCard}>
-      <View style={styles.projectImageContainer}>
-        <Image
-          source={
-            project.image_url ? { uri: project.image_url } : ProjectPlaceholder
-          }
-          style={styles.projectImage}
-          contentFit="cover"
-          transition={500}
-        />
-        <View style={styles.imageOverlay} />
-      </View>
-      <View style={styles.projectContent}>
-        <View>
-          <Text style={styles.projectTitle}>{project.title}</Text>
-          <Text style={styles.projectDesc}>{project.description}</Text>
-        </View>
-        <View>
-          <View style={styles.tagRow}>
-            {project.tags?.map((tag: string, i: number) => (
-              <View key={i} style={styles.tag}>
-                {getTechIcon(tag, COLORS.primary)}
-                <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
+    <View
+      style={[
+        styles.projectWrapper,
+        isDesktop
+          ? { width: '48.5%' }
+          : isTablet
+          ? { width: '48%' }
+          : { width: '100%' },
+      ]}
+    >
+      <GlassCard style={styles.projectCard}>
+        <View style={styles.projectImageContainer}>
+          <Image
+            source={
+              images.length > 0
+                ? { uri: images[currentImgIndex] }
+                : ProjectPlaceholder
+            }
+            style={styles.projectImage}
+            contentFit="cover"
+            transition={500}
+          />
+
+          {/* Gallery Navigation Controls */}
+          {images.length > 1 && (
+            <>
+              <TouchableOpacity onPress={prevImg} style={styles.galleryBtnLeft}>
+                <ChevronLeft color="white" size={20} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={nextImg}
+                style={styles.galleryBtnRight}
+              >
+                <ChevronRight color="white" size={20} />
+              </TouchableOpacity>
+              <View style={styles.galleryIndicator}>
+                <Text style={styles.galleryIndicatorText}>
+                  {currentImgIndex + 1} / {images.length}
+                </Text>
               </View>
-            ))}
+            </>
+          )}
+
+          <View style={styles.imageOverlay} />
+        </View>
+        <View style={styles.projectContent}>
+          <View>
+            <Text style={styles.projectTitle}>{project.title}</Text>
+            <Text style={styles.projectDesc}>{project.description}</Text>
           </View>
-          <View style={styles.projectLinks}>
-            {project.github_url && (
-              <TouchableOpacity
-                onPress={() => Linking.openURL(project.github_url!)}
-                style={styles.iconButton}
-              >
-                <Github color={COLORS.textDim} size={18} />
-                <Text style={styles.linkTextSmall}>Github</Text>
-              </TouchableOpacity>
-            )}
-            {project.live_url && (
-              <TouchableOpacity
-                onPress={() => Linking.openURL(project.live_url!)}
-                style={styles.liveButton}
-              >
-                <Text style={styles.liveButtonText}>View Live</Text>
-                <ExternalLink color={COLORS.background} size={14} />
-              </TouchableOpacity>
-            )}
+          <View>
+            <View style={styles.tagRow}>
+              {project.tags?.map((tag: string, i: number) => (
+                <View key={i} style={styles.tag}>
+                  {getTechIcon(tag, COLORS.primary)}
+                  <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.projectLinks}>
+              {project.github_url && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(project.github_url!)}
+                  style={styles.iconButton}
+                >
+                  <Github color={COLORS.textDim} size={18} />
+                  <Text style={styles.linkTextSmall}>Github</Text>
+                </TouchableOpacity>
+              )}
+              {project.live_url && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(project.live_url!)}
+                  style={styles.liveButton}
+                >
+                  <Text style={styles.liveButtonText}>View Live</Text>
+                  <ExternalLink color={COLORS.background} size={14} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
-      </View>
-    </GlassCard>
-  </View>
+      </GlassCard>
+    </View>
   );
 });
 
 export default function PortfolioHome() {
-
   const router = useRouter();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -276,11 +320,10 @@ export default function PortfolioHome() {
         setRefreshing(false);
       }
     },
-    [fadeAnim],
+    [fadeAnim]
   );
 
   useEffect(() => {
-    // 🛡️ ANALYTICS: Insert visit event to trigger Real-time dashboard
     supabase
       .from('analytics_events')
       .insert({ event_type: 'page_view' })
@@ -399,7 +442,6 @@ export default function PortfolioHome() {
               </Text>
 
               <View style={styles.statusBadge}>
-                {/* 🟢 EMERALD Logic */}
                 <View
                   style={[
                     styles.statusDot,
@@ -481,56 +523,67 @@ export default function PortfolioHome() {
           </View>
         </View>
 
-<View style={styles.spacer} />
+        <View style={styles.spacer} />
         <PhilosophyBento profile={profile} />
 
         <View style={styles.spacer} />
-        
-        {/* --- PORTFOLIO HEADER (MATCHES TECH FOUNDATION STYLE) --- */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.l, gap: 12 }}>
-          {/* Icon Box: Briefcase with lime-green tint */}
-          <View style={{ 
-            backgroundColor: '#a3e63510', 
-            borderWidth: 1, 
-            borderColor: '#a3e63520', 
-            padding: 10, 
-            borderRadius: 12 
-          }}>
+
+        {/* --- PORTFOLIO HEADER --- */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: SPACING.l,
+            gap: 12,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#a3e63510',
+              borderWidth: 1,
+              borderColor: '#a3e63520',
+              padding: 10,
+              borderRadius: 12,
+            }}
+          >
             <Briefcase size={16} color="#a3e635" />
           </View>
 
-          {/* Styled Badge Pill */}
-          <View style={{ 
-            backgroundColor: 'rgba(0,0,0,0.5)', 
-            borderWidth: 1, 
-            borderColor: '#18181b', 
-            paddingHorizontal: 14, 
-            paddingVertical: 8, 
-            borderRadius: 10,
-            flexDirection: 'row', 
-            alignItems: 'center' 
-          }}>
-            {/* Pulsing Dot Effect */}
-            <View style={{ 
-              width: 6, 
-              height: 6, 
-              borderRadius: 3, 
-              backgroundColor: '#a3e635', 
-              marginRight: 10 
-            }} />
-            <Text style={{ 
-              color: '#a3e635', 
-              fontSize: 10, 
-              fontWeight: '900', 
-              letterSpacing: 3, 
-              textTransform: 'uppercase' 
-            }}>
+          <View
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              borderWidth: 1,
+              borderColor: '#18181b',
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: '#a3e635',
+                marginRight: 10,
+              }}
+            />
+            <Text
+              style={{
+                color: '#a3e635',
+                fontSize: 10,
+                fontWeight: '900',
+                letterSpacing: 3,
+                textTransform: 'uppercase',
+              }}
+            >
               Portfolio
             </Text>
           </View>
         </View>
 
-        {/* PROJECTS CONTAINER */}
         <View style={styles.projectsContainer}>
           {projects.map((project) => (
             <ProjectCard
@@ -758,7 +811,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.02)',
   },
   secondaryButtonText: { color: COLORS.text, fontWeight: '900', fontSize: 12 },
-  heroImageContainer: { justifyContent: 'center' }, // Fixed: restored missing key
+  heroImageContainer: { justifyContent: 'center' },
   avatarBorder: {
     borderRadius: 1000,
     padding: 12,
@@ -786,8 +839,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#18181b',
   },
-  projectImageContainer: { width: '100%', height: 240 },
+  projectImageContainer: { width: '100%', height: 240, position: 'relative' },
   projectImage: { width: '100%', height: '100%' },
+  // --- Gallery Navigation Styles ---
+  galleryBtnLeft: {
+    position: 'absolute',
+    left: 10,
+    top: '50%',
+    marginTop: -20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 8,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  galleryBtnRight: {
+    position: 'absolute',
+    right: 10,
+    top: '50%',
+    marginTop: -20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 8,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  galleryIndicator: {
+    position: 'absolute',
+    bottom: 15,
+    right: 15,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  galleryIndicatorText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '900',
+  },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.1)',
